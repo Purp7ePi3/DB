@@ -156,7 +156,7 @@ include 'header.php';
             <button type="submit" class="btn-primary btn-full">Registrati</button>
         </form>
         
-        <div class="auth-separator">
+        <!-- <div class="auth-separator">
             <span>oppure</span>
         </div>
         
@@ -167,7 +167,7 @@ include 'header.php';
             <a href="oauth/facebook.php" class="btn-social btn-facebook">
                 <i class="fab fa-facebook-f"></i> Registrati con Facebook
             </a>
-        </div>
+        </div> -->
         
         <div class="auth-link">
             Hai già un account? <a href="login.php">Accedi</a>

@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $result->fetch_assoc();
             
             // Verify password
-            if (password_verify($password, $user['password_hash'])) {
+            if ($password === $user['password_hash']) {
                 // Password is correct, set session variables
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
@@ -109,11 +109,11 @@ include 'header.php';
             <button type="submit" class="btn-primary btn-full">Accedi</button>
         </form>
         
-        <div class="auth-separator">
+        <!-- <div class="auth-separator">
             <span>oppure</span>
         </div>
         
-        <div class="social-login">
+         <div class="social-login">
             <a href="oauth/google.php" class="btn-social btn-google">
                 <i class="fab fa-google"></i> Accedi con Google
             </a>
@@ -124,7 +124,7 @@ include 'header.php';
         
         <div class="auth-link">
             Non hai un account? <a href="register.php">Registrati ora</a>
-        </div>
+        </div> -->
     </div>
 </section>
 

@@ -1,6 +1,9 @@
 <?php
 // Avvia la sessione per gestire login utente
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="it">
