@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.innerHTML = originalText;
                 }, 1500);
                 
-                // Here you would typically make an AJAX call to add the item to cart
+                // Get the listing ID and add to cart
                 const listingId = this.getAttribute('data-listing-id');
                 if (listingId) {
                     addToCart(listingId);
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Toggle active class (for color change)
             this.classList.toggle('active');
             
-            // Here you would make an AJAX call to toggle wishlist status
+            // Get the card ID and toggle wishlist status
             const cardId = this.getAttribute('data-card-id');
             if (cardId) {
                 toggleWishlist(cardId);
@@ -74,8 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to add item to cart via AJAX
     function addToCart(listingId) {
-        // Example AJAX call - would be implemented based on your backend
-        /*
         fetch('add_to_cart.php', {
             method: 'POST',
             headers: {
@@ -86,16 +84,24 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update cart count or show notification
+                // Update cart count in the UI
+                updateCartCount(data.cartCount);
+                
+                // Show a success notification
+                showNotification('Carta aggiunta al carrello', 'success');
+            } else {
+                // Show error notification
+                showNotification(data.message || 'Errore durante l\'aggiunta al carrello', 'error');
             }
+        })
+        .catch(error => {
+            console.error('Error adding to cart:', error);
+            showNotification('Errore di connessione. Riprova più tardi.', 'error');
         });
-        */
     }
 
     // Function to toggle wishlist status via AJAX
     function toggleWishlist(cardId) {
-        // Example AJAX call - would be implemented based on your backend
-        /*
         fetch('toggle_wishlist.php', {
             method: 'POST',
             headers: {
@@ -106,10 +112,65 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Show notification
+                // Show appropriate notification based on action
+                if (data.added) {
+                    showNotification('Carta aggiunta alla wishlist', 'success');
+                } else {
+                    showNotification('Carta rimossa dalla wishlist', 'info');
+                }
+            } else {
+                // Show error notification
+                showNotification(data.message || 'Errore durante l\'aggiornamento della wishlist', 'error');
             }
+        })
+        .catch(error => {
+            console.error('Error updating wishlist:', error);
+            showNotification('Errore di connessione. Riprova più tardi.', 'error');
         });
-        */
+    }
+
+    // Function to update the cart count in the UI
+    function updateCartCount(count) {
+        const cartIcon = document.querySelector('.cart-icon');
+        if (cartIcon) {
+            // Create or update the cart count badge
+            let badge = cartIcon.querySelector('.cart-count');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'cart-count';
+                cartIcon.appendChild(badge);
+            }
+            badge.textContent = count;
+            
+            // Add animation to highlight the change
+            badge.classList.add('update-animation');
+            setTimeout(() => {
+                badge.classList.remove('update-animation');
+            }, 500);
+        }
+    }
+
+    // Function to show notifications
+    function showNotification(message, type = 'info') {
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'notification';
+            document.body.appendChild(notification);
+        }
+        
+        // Set message and type
+        notification.textContent = message;
+        notification.className = 'notification ' + type;
+        
+        // Show notification
+        notification.classList.add('show');
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, 3000);
     }
 
     // Marketplace filters for mobile
