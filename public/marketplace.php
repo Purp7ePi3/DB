@@ -1,7 +1,7 @@
 <?php
 // Includi il file di configurazione
 require_once 'config.php';
-$debug_mode = true;
+$debug_mode = false; // Change to false for production
 
 // Imposta valori predefiniti per ordinamento e filtri
 $sort = $_GET['sort'] ?? 'latest';
@@ -13,7 +13,7 @@ $min_price = (float)($_GET['min_price'] ?? 0);
 $max_price = (float)($_GET['max_price'] ?? 0);
 $search = $_GET['search'] ?? '';
 
-$where_clauses = ["1=1"];
+$where_clauses = ["l.is_active = TRUE"]; // Add this condition to only show active listings
 if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
 if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
 if ($condition_id > 0) $where_clauses[] = "l.condition_id = $condition_id";
@@ -85,15 +85,7 @@ if ($game_id > 0) {
 }
 
 include 'header.php';
-
 ?>
-
-<style>
-    .cards-grid { border: 2px solid red; padding: 20px; }
-    .card-item { border: 2px solid blue; margin: 10px; padding: 10px; display: block; }
-</style>
-
-<!-- Rest of your HTML stays the same -->
 
 <div class="marketplace-container">
     <div class="filters-sidebar">
@@ -256,28 +248,24 @@ include 'header.php';
         <div class="sort-mobile">
             <label for="sort-mobile">Ordina per:</label>
             <select id="sort-mobile" onchange="document.getElementById('sort').value=this.value; document.getElementById('filter-form').submit();">
-            <option value="latest" <?php echo ($sort == 'latest') ? 'selected' : ''; ?>>Più recenti</option>
-            <option value="price_asc" <?php echo ($sort == 'price_asc') ? 'selected' : ''; ?>>Prezzo crescente</option>
-            <option value="price_desc" <?php echo ($sort == 'price_desc') ? 'selected' : ''; ?>>Prezzo decrescente</option>
-            <option value="name_asc" <?php echo ($sort == 'name_asc') ? 'selected' : ''; ?>>Nome A-Z</option>
-            <option value="name_desc" <?php echo ($sort == 'name_desc') ? 'selected' : ''; ?>>Nome Z-A</option>
-        </select>
+                <option value="latest" <?php echo ($sort == 'latest') ? 'selected' : ''; ?>>Più recenti</option>
+                <option value="price_asc" <?php echo ($sort == 'price_asc') ? 'selected' : ''; ?>>Prezzo crescente</option>
+                <option value="price_desc" <?php echo ($sort == 'price_desc') ? 'selected' : ''; ?>>Prezzo decrescente</option>
+                <option value="name_asc" <?php echo ($sort == 'name_asc') ? 'selected' : ''; ?>>Nome A-Z</option>
+                <option value="name_desc" <?php echo ($sort == 'name_desc') ? 'selected' : ''; ?>>Nome Z-A</option>
+            </select>
         </div>
         
-        <div class="cards-grid marketplace-grid">
+        <div class="cards-grid">
             <?php
             if ($result && $result->num_rows > 0) {
-                echo "<p>Processing " . $result->num_rows . " cards...</p>";
-                $card_count = 0;
                 while($card = $result->fetch_assoc()) {
-                    $card_count++;
-                    echo "<p>Card #{$card_count}: {$card['name_en']}</p>";
                     ?>
                     <div class="card-item">
                         <a href="listing.php?id=<?php echo $card["id"]; ?>">
                             <div class="card-image">
                                 <?php if ($card["image_url"]): ?>
-                                    <img src="<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
+                                    <img src="<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>" loading="lazy">
                                 <?php else: ?>
                                     <div class="no-image">Immagine non disponibile</div>
                                 <?php endif; ?>
@@ -295,6 +283,14 @@ include 'header.php';
                                 </div>
                             </div>
                         </a>
+                        <div class="card-actions">
+                            <button class="btn-cart" data-listing-id="<?php echo $card["id"]; ?>">
+                                <i class="fas fa-cart-plus"></i> Aggiungi
+                            </button>
+                            <button class="btn-wishlist" data-card-id="<?php echo $card["id"]; ?>">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
                     </div>
                     <?php
                 }
@@ -316,31 +312,55 @@ include 'header.php';
         const filterToggle = document.getElementById('filter-toggle');
         const filtersSidebar = document.querySelector('.filters-sidebar');
         
-        filterToggle.addEventListener('click', function() {
-            filtersSidebar.classList.toggle('active');
-        });
+        if (filterToggle && filtersSidebar) {
+            filterToggle.addEventListener('click', function() {
+                filtersSidebar.classList.toggle('active');
+            });
+            
+            // Chiudi i filtri quando si clicca fuori
+            document.addEventListener('click', function(event) {
+                if (!filtersSidebar.contains(event.target) && event.target !== filterToggle) {
+                    filtersSidebar.classList.remove('active');
+                }
+            });
+        }
         
-        // Chiudi i filtri quando si clicca fuori
-        document.addEventListener('click', function(event) {
-            if (!filtersSidebar.contains(event.target) && event.target !== filterToggle) {
-                filtersSidebar.classList.remove('active');
-            }
-        });
-        
-        // Invia il form quando cambia una select (tranne game_id che già lo fa)
-        const selectElements = document.querySelectorAll('.filters-sidebar select:not(#game_id)');
-        selectElements.forEach(select => {
-            select.addEventListener('change', function() {
-                document.getElementById('filter-form').submit();
+        // Add to cart functionality
+        const addToCartButtons = document.querySelectorAll('.btn-cart');
+        addToCartButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Add animation class
+                this.classList.add('adding');
+                
+                // Get the listing ID and add to cart
+                const listingId = this.getAttribute('data-listing-id');
+                if (listingId) {
+                    addToCart(listingId, this);
+                }
             });
         });
-    });
-</script>
-
-<?php
-// Includi il footer
-include 'footer.php';
-
-// Chiudi la connessione al database
-$conn->close();
-?>
+        
+        // Function to add item to cart via AJAX
+        function addToCart(listingId, button) {
+            fetch('add_to_cart.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'listing_id=' + listingId
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove animation class
+                button.classList.remove('adding');
+                
+                if (data.success) {
+                    // Update cart count in the UI
+                    updateCartCount(data.cartCount);
+                    
+                    // Show success feedback
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas

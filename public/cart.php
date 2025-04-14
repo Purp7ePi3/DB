@@ -225,7 +225,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.value = max;
                 alert('La quantità richiesta non è disponibile');
             }
-            
             // Impedisce quantità negative
             if (parseInt(this.value) < 1) {
                 this.value = 1;

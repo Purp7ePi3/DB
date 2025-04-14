@@ -29,7 +29,7 @@ $sql_expensive = "SELECT l.id, l.price, l.condition_id, sc.name_en, sc.image_url
 $result_expensive = $conn->query($sql_expensive);
 
 // Includi l'header
-include 'header.php';
+include 'std/header.php';
 ?>
 
 <section class="hero">
@@ -182,5 +182,5 @@ include 'header.php';
 $conn->close();
 
 // Includi il footer
-include 'footer.php';
+include 'std/footer.php';
 ?>
