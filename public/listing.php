@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include database configuration
-require_once 'config.php';
+require_once '../config/config.php';
 
 // Check if listing ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {

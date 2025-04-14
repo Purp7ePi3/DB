@@ -4,14 +4,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+$root_path = $_SERVER['DOCUMENT_ROOT'];
+$base_url = "/DataBase";
 // Include database configuration
-require_once 'config.php';
+require_once '../config/config.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     // Store current URL to redirect back after login
     $_SESSION['redirect_url'] = 'cart.php';
-    header("Location: login.php");
+    header("Location: $base_url/public/index.php");
     exit;
 }
 
@@ -58,6 +60,7 @@ $sql = "SELECT ci.id as cart_item_id, ci.quantity, l.id as listing_id, l.price, 
         sc.name_en, sc.image_url, e.name as expansion_name, g.display_name as game_name,
         cc.condition_name, u.username as seller_name, up.rating as seller_rating
         FROM cart_items ci
+        JOIN carts c ON ci.cart_id = c.id
         JOIN listings l ON ci.listing_id = l.id
         JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
         JOIN expansions e ON sc.expansion_id = e.id
@@ -65,8 +68,8 @@ $sql = "SELECT ci.id as cart_item_id, ci.quantity, l.id as listing_id, l.price, 
         JOIN card_conditions cc ON l.condition_id = cc.id
         JOIN accounts u ON l.seller_id = u.id
         JOIN user_profiles up ON u.id = up.user_id
-        WHERE ci.user_id = ? AND l.is_active = TRUE
-        ORDER BY ci.added_at DESC";
+        WHERE c.user_id = ? AND l.is_active = TRUE
+        ORDER BY c.updated_at DESC";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
@@ -104,7 +107,8 @@ if ($result->num_rows > 0) {
 }
 
 // Include header
-include 'header.php';
+include_once $root_path . $base_url . '/public/partials/header.php';
+
 ?>
 
 <div class="cart-container">
@@ -137,7 +141,7 @@ include 'header.php';
                             <div class="item-image">
                                 <a href="listing.php?id=<?php echo $item['listing_id']; ?>">
                                     <?php if ($item['image_url']): ?>
-                                        <img src="<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name_en']); ?>">
+                                        <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name_en']); ?>">
                                     <?php else: ?>
                                         <div class="no-image">Immagine non disponibile</div>
                                     <?php endif; ?>
@@ -236,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?php
 // Include footer
-include 'footer.php';
+include '../public/partials/footer.php';
 
 // Close database connection
 $conn->close();
