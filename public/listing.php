@@ -102,7 +102,7 @@ include 'header.php';
     <div class="listing-content">
         <div class="card-image-container">
             <?php if ($listing["image_url"]): ?>
-                <img src="<?php echo htmlspecialchars($listing["image_url"]); ?>" alt="<?php echo htmlspecialchars($listing["name_en"]); ?>" class="card-full-image">
+                <img src="https://www.cardtrader.com/images/games/<?php echo htmlspecialchars($listing["image_url"]); ?>" alt="<?php echo htmlspecialchars($listing["name_en"]); ?>" class="card-full-image">
             <?php else: ?>
                 <div class="no-image-large">Immagine non disponibile</div>
             <?php endif; ?>
