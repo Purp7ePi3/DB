@@ -9,6 +9,10 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
+$base_url = "/DataBase";
+
+$default_account_type_id = 1; // Id non admin
+
 // Include database configuration
 require_once '../config/config.php';
 
@@ -55,25 +59,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($result->num_rows > 0) {
                 $error_message = "Il nome utente è già in uso. Per favore scegline un altro.";
             } else {
-                // Hash the password
-                $password_hash = password_hash($password, PASSWORD_DEFAULT);
                 
-                // Begin transaction
+                //$password_hash = password_hash($password, PASSWORD_DEFAULT);
+                $password_hash = $password;        
+
                 $conn->begin_transaction();
                 
                 try {
                     // Insert user account
-                    $sql_insert = "INSERT INTO accounts (username, email, password_hash, created_at, is_active) 
-                                   VALUES (?, ?, ?, NOW(), TRUE)";
+                    $sql_insert = "INSERT INTO accounts (username, email, password_hash, created_at, is_active, account_type_id) 
+                                   VALUES (?, ?, ?, NOW(), TRUE, ?)";
                     $stmt = $conn->prepare($sql_insert);
-                    $stmt->bind_param("sss", $username, $email, $password_hash);
+                    $stmt->bind_param("sssi", $username, $email, $password_hash, $default_account_type_id);
                     $stmt->execute();
                     
                     $user_id = $conn->insert_id;
                     
                     // Create user profile
-                    $sql_profile = "INSERT INTO user_profiles (user_id, rating, bio, location, 
-                                   registered_date, last_login) VALUES (?, 0, '', '', NOW(), NOW())";
+                    $sql_profile = "INSERT INTO user_profiles (user_id, rating, country) VALUES (?, 0, '')";
                     $stmt = $conn->prepare($sql_profile);
                     $stmt->bind_param("i", $user_id);
                     $stmt->execute();
@@ -90,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['email'] = $email;
                     
                     // Redirect to home page after short delay (to show success message)
-                    header("refresh:2;url=index.php");
+                    header("Location: $base_url/public/index.php");
                     
                 } catch (Exception $e) {
                     // Rollback transaction on error

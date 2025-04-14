@@ -20,7 +20,7 @@ $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', s
 $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
 
 // Include header
-include 'header.php';
+include_once $root_path . $base_url . '/public/partials/header.php';
 
 // Get total users
 $sql_users = "SELECT COUNT(*) as total FROM accounts";
@@ -55,16 +55,17 @@ $result_recent_orders = $conn->query($sql_recent_orders);
 
 // Get sales by game
 $sql_sales_by_game = "SELECT g.display_name, COUNT(oi.id) as items_sold, 
-                      SUM(oi.price * oi.quantity) as total_sales 
+                      SUM(oi.unit_price * oi.quantity) as total_sales 
                       FROM order_items oi
                       JOIN listings l ON oi.listing_id = l.id
                       JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
                       JOIN expansions e ON sc.expansion_id = e.id
                       JOIN games g ON e.game_id = g.id
                       JOIN orders o ON oi.order_id = o.id
-                      WHERE o.status = 'completed' AND o.created_at BETWEEN ? AND ?
+                      WHERE o.status = 'completed' AND o.order_date BETWEEN ? AND ?
                       GROUP BY g.id
                       ORDER BY total_sales DESC";
+
 $stmt = $conn->prepare($sql_sales_by_game);
 $stmt->bind_param("ss", $start_date, $end_date_adj);
 $stmt->execute();
@@ -79,10 +80,11 @@ $sql_top_cards = "SELECT sc.name_en, e.name as expansion, g.display_name as game
                   JOIN expansions e ON sc.expansion_id = e.id
                   JOIN games g ON e.game_id = g.id
                   JOIN orders o ON oi.order_id = o.id
-                  WHERE o.status = 'completed' AND o.created_at BETWEEN ? AND ?
+                  WHERE o.status = 'completed' AND o.order_date BETWEEN ? AND ?
                   GROUP BY sc.blueprint_id
                   ORDER BY total_quantity DESC
                   LIMIT 10";
+
 $stmt = $conn->prepare($sql_top_cards);
 $stmt->bind_param("ss", $start_date, $end_date_adj);
 $stmt->execute();
@@ -221,7 +223,7 @@ $result_top_cards = $stmt->get_result();
 
 <?php
 // Include footer
-include 'footer.php';
+include '../public/partials/footer.php';
 
 // Close database connection
 $conn->close();

@@ -43,6 +43,9 @@ $base_url = isset($base_path) ? $base_path : '';
                             <span><?php echo htmlspecialchars($_SESSION['username']); ?> <i class="fas fa-chevron-down"></i></span>
                             <div class="dropdown-menu">
                                 <a href="profile.php">Il mio profilo</a>
+                                <?php if(isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
+                                    <a href="<?php echo BASE_URL; ?>/admin/admin_stats.php">Statistiche</a>
+                                <?php endif; ?>
                                 <a href="orders.php">I miei ordini</a>
                                 <a href="listings.php">I miei annunci</a>
                                 <a href="wishlist.php">Wishlist</a>

@@ -1,10 +1,4 @@
 <?php
-echo "<div style='background: yellow; padding: 10px;'>";
-echo "Document Root: " . $_SERVER['DOCUMENT_ROOT'] . "<br>";
-echo "Script Filename: " . $_SERVER['SCRIPT_FILENAME'] . "<br>";
-echo "PHP_SELF: " . $_SERVER['PHP_SELF'] . "<br>";
-echo "</div>";
-
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -35,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Per favore, inserisci sia l'email che la password.";
     } else {
         // Prepare SQL to check user credentials
-        $sql = "SELECT id, username, email, password_hash, is_active FROM accounts WHERE email = ?";
+        $sql = "SELECT id, username, email, password_hash, is_active, account_type_id FROM accounts WHERE email = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -50,7 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['email'] = $user['email'];
-                $_SESSION['is_admin'] = $user['is_admin'] ?? false;
+                
+                // Set admin status based on account_type_id
+                $_SESSION['is_admin'] = ($user['account_type_id'] == 1);
                 
                 // Check if "remember me" is checked
                 if (isset($_POST['remember']) && $_POST['remember'] == 'on') {
@@ -65,7 +61,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     header("Location: $redirect");
                 } else {
                     header("Location: $base_url/public/index.php");
-
                 }
                 exit;
             } else {
@@ -129,5 +124,5 @@ include_once $root_path . $base_url . '/public/partials/header.php';
 
 <?php
 // Include footer - use absolute path to ensure CSS loads correctly
-include '../public/partials/footer.php';
+include_once $root_path . $base_url . '/public/partials/footer.php';
 ?>

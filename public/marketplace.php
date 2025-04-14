@@ -3,10 +3,16 @@
 require_once '../config/config.php';
 $debug_db = $conn->query("SELECT COUNT(*) as count FROM listings");
 $debug_cards = $debug_db->fetch_assoc()['count'];
-echo "<div style='background: #f5f5f5; padding: 10px; margin: 10px 0; border: 1px solid #ccc;'>";
-echo "Numero totale di inserzioni nel database: $debug_cards<br>";
-echo "</div>";
-$debug_mode = true; // Set to true to see debugging information
+if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
+    echo "<div style='background: #f5f5f5; padding: 10px; margin: 10px 0; border: 1px solid #ccc;'>";
+    echo "Numero totale di inserzioni nel database: $debug_cards<br>";
+    echo "</div>";
+    $debug_mode = true;
+} else {
+    $debug_mode = false;
+}
+
+$debug_mode = false; // Set to true to see debugging information
 
 // Imposta valori predefiniti per ordinamento e filtri
 $sort = $_GET['sort'] ?? 'latest';
@@ -18,24 +24,14 @@ $min_price = (float)($_GET['min_price'] ?? 0);
 $max_price = (float)($_GET['max_price'] ?? 0);
 $search = $_GET['search'] ?? '';
 
-// $where_clauses = ["l.is_active = TRUE"]; // Add this condition to only show active listings
-$where_clauses = []; // usa un array vuoto per i test
-$sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url 
-        FROM listings l
-        JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
-        LIMIT 10";
-        
+$where_clauses = ["l.is_active = TRUE"];
+
 if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
 if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
 if ($condition_id > 0) $where_clauses[] = "l.condition_id = $condition_id";
 if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
 if ($min_price > 0) $where_clauses[] = "l.price >= $min_price";
 if ($max_price > 0) $where_clauses[] = "l.price <= $max_price";
-
-if (!empty($search)) {
-    $search = $conn->real_escape_string($search);
-    $where_clauses[] = "(sc.name_en LIKE '%$search%' OR e.name LIKE '%$search%')";
-}
 
 $where_clause = !empty($where_clauses) ? implode(" AND ", $where_clauses) : "1=1";
 
@@ -47,16 +43,23 @@ switch ($sort) {
     default: $order_by = "l.created_at DESC"; break;
 }
 
+if (!empty($search)) {
+    $search = $conn->real_escape_string($search);
+    $where_clauses[] = "(sc.name_en LIKE '%$search%' OR e.name LIKE '%$search%')";
+}
+
+
+
 $sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url, sc.collector_number,
         e.name as expansion_name, g.display_name as game_name, cc.condition_name, u.username as seller_name,
-        up.rating as seller_rating
+        COALESCE(up.rating, 0) as seller_rating
         FROM listings l
         JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
-        JOIN expansions e ON sc.expansion_id = e.id
-        JOIN games g ON e.game_id = g.id
-        JOIN card_conditions cc ON l.condition_id = cc.id
+        LEFT JOIN expansions e ON sc.expansion_id = e.id
+        LEFT JOIN games g ON e.game_id = g.id
+        LEFT JOIN card_conditions cc ON l.condition_id = cc.id
         JOIN accounts u ON l.seller_id = u.id
-        JOIN user_profiles up ON u.id = up.user_id
+        LEFT JOIN user_profiles up ON u.id = up.user_id
         WHERE $where_clause
         ORDER BY $order_by
         LIMIT 24";
