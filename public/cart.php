@@ -111,6 +111,7 @@ if ($result->num_rows > 0) {
 include_once $root_path . $base_url . '/public/partials/header.php';
 
 ?>
+<link rel="stylesheet" href="<?php echo $base_url; ?>/css/cart.css">
 
 <div class="cart-container">
     <h1>Il tuo carrello</h1>

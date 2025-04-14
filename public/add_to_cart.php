@@ -4,8 +4,11 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+$root_path = $_SERVER['DOCUMENT_ROOT'];
+$base_url = "/DataBase";
+
 // Include configuration file
-require_once 'config.php';
+require_once '../config/config.php';
 
 // Set content type to JSON
 header('Content-Type: application/json');
@@ -17,7 +20,7 @@ if (!isset($_SESSION['user_id'])) {
         'message' => 'Devi effettuare il login per aggiungere prodotti al carrello',
         'redirect' => 'login.php'
     ]);
-    exit;
+    header("Location: $base_url/public/index.php");  
 }
 
 // Check if POST data exists
