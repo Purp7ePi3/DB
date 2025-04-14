@@ -55,7 +55,7 @@ include 'header.php';
             while($game = $result_games->fetch_assoc()) {
                 echo '<a href="game.php?id=' . $game["id"] . '" class="game-card">';
                 echo '<div class="game-logo">';
-                echo '<img src="images/games/' . $game["name"] . '-logo.png" alt="' . htmlspecialchars($game["display_name"]) . '">';
+                echo '<img src="https://www.cardtrader.com/images/games/' . $game["name"] . '-logo.png" alt="' . htmlspecialchars($game["display_name"]) . '">';
                 echo '</div>';
                 echo '<h3>' . htmlspecialchars($game["display_name"]) . '</h3>';
                 echo '</a>';
@@ -76,7 +76,7 @@ include 'header.php';
                     <a href="listing.php?id=<?php echo $card["id"]; ?>">
                         <div class="card-image">
                             <?php if ($card["image_url"]): ?>
-                                <img src="<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
+                                <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
                             <?php else: ?>
                                 <div class="no-image">Immagine non disponibile</div>
                             <?php endif; ?>
@@ -123,7 +123,7 @@ include 'header.php';
                     <a href="listing.php?id=<?php echo $card["id"]; ?>">
                         <div class="featured-image">
                             <?php if ($card["image_url"]): ?>
-                                <img src="<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
+                                <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
                             <?php else: ?>
                                 <div class="no-image">Immagine non disponibile</div>
                             <?php endif; ?>
