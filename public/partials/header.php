@@ -7,6 +7,9 @@ if (session_status() === PHP_SESSION_NONE) {
 define('BASE_URL', '/DataBase');
 define('BASE_PATH', dirname(__DIR__));
 
+
+$base_url = isset($base_path) ? $base_path : '';
+
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -14,7 +17,7 @@ define('BASE_PATH', dirname(__DIR__));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Card Collector Center</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="/DataBase/public/assets/css/style.css">
                    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -23,7 +26,7 @@ define('BASE_PATH', dirname(__DIR__));
         <div class="top-bar">
             <div class="container">
                 <div class="logo">
-                    <a href="index.php">
+                    <a href="<?php echo BASE_URL; ?>/public/index.php">
                         <h1>Card Collector Center</h1>
                     </a>
                 </div>
@@ -76,10 +79,10 @@ define('BASE_PATH', dirname(__DIR__));
                             ?>
                         </div>
                     </li>
-                    <li><a href="marketplace.php">Marketplace</a></li>
-                    <li><a href="seller_guide.php">Guida per venditori</a></li>
-                    <li><a href="faq.php">FAQ</a></li>
-                    <li><a href="contact.php">Contatti</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/public/marketplace.php">Marketplace</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/public/seller_guide.php">Guida per venditori</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/public/faq.php">FAQ</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/public/contact.php">Contatti</a></li>
                 </ul>
             </div>
         </nav>

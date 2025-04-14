@@ -1,4 +1,9 @@
 <?php
+echo "<div style='background: yellow; padding: 10px;'>";
+echo "Document Root: " . $_SERVER['DOCUMENT_ROOT'] . "<br>";
+echo "Script Filename: " . $_SERVER['SCRIPT_FILENAME'] . "<br>";
+echo "PHP_SELF: " . $_SERVER['PHP_SELF'] . "<br>";
+echo "</div>";
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -8,6 +13,9 @@ if (isset($_SESSION['user_id'])) {
     header("Location: ../index.php");
     exit;
 }
+
+$root_path = $_SERVER['DOCUMENT_ROOT'];
+$base_url = "/DataBase/"; // URL base relativo alla radice del server
 
 // Include database configuration
 require_once '../config/config.php';
@@ -67,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Include header - use absolute path to ensure CSS loads correctly
-include_once '../public/partials/header.php';
+include_once $root_path . $base_url . 'public/partials/header.php';
 ?>
 
 <section class="auth-container">
@@ -118,5 +126,5 @@ include_once '../public/partials/header.php';
 
 <?php
 // Include footer - use absolute path to ensure CSS loads correctly
-include_once '../public/partials/footer.php';
+include '../public/partials/footer.php';
 ?>

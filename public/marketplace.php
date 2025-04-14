@@ -1,6 +1,11 @@
 <?php
 // Includi il file di configurazione
 require_once '../config/config.php';
+$debug_db = $conn->query("SELECT COUNT(*) as count FROM listings");
+$debug_cards = $debug_db->fetch_assoc()['count'];
+echo "<div style='background: #f5f5f5; padding: 10px; margin: 10px 0; border: 1px solid #ccc;'>";
+echo "Numero totale di inserzioni nel database: $debug_cards<br>";
+echo "</div>";
 $debug_mode = true; // Set to true to see debugging information
 
 // Imposta valori predefiniti per ordinamento e filtri
@@ -13,8 +18,13 @@ $min_price = (float)($_GET['min_price'] ?? 0);
 $max_price = (float)($_GET['max_price'] ?? 0);
 $search = $_GET['search'] ?? '';
 
-$where_clauses = ["l.is_active = TRUE"]; // Add this condition to only show active listings
-
+// $where_clauses = ["l.is_active = TRUE"]; // Add this condition to only show active listings
+$where_clauses = []; // usa un array vuoto per i test
+$sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url 
+        FROM listings l
+        JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
+        LIMIT 10";
+        
 if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
 if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
 if ($condition_id > 0) $where_clauses[] = "l.condition_id = $condition_id";
