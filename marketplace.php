@@ -1,7 +1,7 @@
 <?php
 // Includi il file di configurazione
 require_once 'config.php';
-
+$debug_mode = true;
 // Imposta valori predefiniti per ordinamento e filtri
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'latest';
 $game_id = isset($_GET['game_id']) ? (int)$_GET['game_id'] : 0;
@@ -13,7 +13,8 @@ $max_price = isset($_GET['max_price']) ? (float)$_GET['max_price'] : 0;
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 
 // Inizializza la clausola WHERE della query
-$where_clauses = ["l.is_active = TRUE"];
+//$where_clauses = ["l.is_active = TRUE", "l.quantity > 0"];  // Add check for quantity to show only available items
+$where_clauses = ["1=1"]; // This will match everything
 
 // Aggiungi filtri alla query se specificati
 if ($game_id > 0) {
@@ -42,6 +43,16 @@ if (!empty($search)) {
 // Costruisci la clausola WHERE finale
 $where_clause = implode(" AND ", $where_clauses);
 
+if ($debug_mode) {
+    echo "<div class='debug-info'>";
+    echo "<h3>Debug Information</h3>";
+    echo "<p>SQL Query: " . htmlspecialchars($sql) . "</p>";
+    echo "<p>Rows returned: " . ($result ? $result->num_rows : 'Query failed') . "</p>";
+    if (!$result) {
+        echo "<p>Error: " . $conn->error . "</p>";
+    }
+    echo "</div>";
+}
 // Imposta l'ordinamento in base alla selezione
 switch ($sort) {
     case 'price_asc':
@@ -62,6 +73,9 @@ switch ($sort) {
         break;
 }
 
+// Add debug query option
+$debug_query = isset($_GET['debug']) && $_GET['debug'] == 1;
+
 // Query per ottenere le carte in base ai filtri
 $sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url, sc.collector_number, 
         e.name as expansion_name, g.display_name as game_name, cc.condition_name, u.username as seller_name,
@@ -77,7 +91,17 @@ $sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_u
         ORDER BY $order_by
         LIMIT 24";
 
+// Print query for debugging if requested
+if ($debug_query) {
+    echo "<pre>$sql</pre>";
+}
+
 $result = $conn->query($sql);
+
+// Check for MySQL errors
+if (!$result) {
+    $error_message = "Errore nella query: " . $conn->error;
+}
 
 // Query per ottenere tutti i giochi per il filtro
 $sql_games = "SELECT id, display_name FROM games ORDER BY display_name";
@@ -116,7 +140,7 @@ include 'header.php';
                 <select id="game_id" name="game_id" onchange="this.form.submit()">
                     <option value="0">Tutti i giochi</option>
                     <?php
-                    if ($result_games->num_rows > 0) {
+                    if ($result_games && $result_games->num_rows > 0) {
                         while($game = $result_games->fetch_assoc()) {
                             $selected = ($game_id == $game["id"]) ? "selected" : "";
                             echo '<option value="' . $game["id"] . '" ' . $selected . '>' . htmlspecialchars($game["display_name"]) . '</option>';
@@ -146,7 +170,7 @@ include 'header.php';
                 <select id="condition_id" name="condition_id">
                     <option value="0">Tutte le condizioni</option>
                     <?php
-                    if ($result_conditions->num_rows > 0) {
+                    if ($result_conditions && $result_conditions->num_rows > 0) {
                         while($condition = $result_conditions->fetch_assoc()) {
                             $selected = ($condition_id == $condition["id"]) ? "selected" : "";
                             echo '<option value="' . $condition["id"] . '" ' . $selected . '>' . htmlspecialchars($condition["condition_name"]) . '</option>';
@@ -161,7 +185,7 @@ include 'header.php';
                 <select id="rarity_id" name="rarity_id">
                     <option value="0">Tutte le rarità</option>
                     <?php
-                    if ($result_rarities->num_rows > 0) {
+                    if ($result_rarities && $result_rarities->num_rows > 0) {
                         while($rarity = $result_rarities->fetch_assoc()) {
                             $selected = ($rarity_id == $rarity["id"]) ? "selected" : "";
                             echo '<option value="' . $rarity["id"] . '" ' . $selected . '>' . htmlspecialchars($rarity["rarity_name"]) . '</option>';
@@ -201,6 +225,12 @@ include 'header.php';
     <div class="marketplace-content">
         <h1>Marketplace</h1>
         
+        <?php if (isset($error_message)): ?>
+            <div class="alert alert-danger">
+                <?php echo $error_message; ?>
+            </div>
+        <?php endif; ?>
+        
         <?php 
         // Mostra i filtri attivi
         $active_filters = [];
@@ -232,6 +262,15 @@ include 'header.php';
                 }
             }
         }
+        if ($rarity_id > 0 && $result_rarities) {
+            $result_rarities->data_seek(0);
+            while($rarity = $result_rarities->fetch_assoc()) {
+                if ($rarity["id"] == $rarity_id) {
+                    $active_filters[] = "Rarità: " . htmlspecialchars($rarity["rarity_name"]);
+                    break;
+                }
+            }
+        }
         if ($min_price > 0) $active_filters[] = "Prezzo min: " . number_format($min_price, 2, ',', '.') . " €";
         if ($max_price > 0) $active_filters[] = "Prezzo max: " . number_format($max_price, 2, ',', '.') . " €";
         
@@ -258,7 +297,7 @@ include 'header.php';
         
         <div class="cards-grid marketplace-grid">
             <?php
-            if ($result->num_rows > 0) {
+            if ($result && $result->num_rows > 0) {
                 while($card = $result->fetch_assoc()) {
                     ?>
                     <div class="card-item">

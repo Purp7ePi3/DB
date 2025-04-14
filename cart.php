@@ -201,3 +201,44 @@ include 'header.php';
                         <button type="submit" name="update_cart" class="btn-secondary">Aggiorna carrello</button>
                         <a href="checkout.php" class="btn-primary">Procedi al checkout</a>
                     </div>
+                </div>
+            </div>
+        </form>
+    <?php else: ?>
+        <div class="empty-cart">
+            <p>Il tuo carrello è vuoto</p>
+            <a href="marketplace.php" class="btn-primary">Continua lo shopping</a>
+        </div>
+    <?php endif; ?>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Aggiorna il totale quando cambia la quantità
+    const quantityInputs = document.querySelectorAll('.item-quantity input');
+    
+    quantityInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Verifica che la quantità non superi il massimo disponibile
+            const max = parseInt(this.getAttribute('max'));
+            if (parseInt(this.value) > max) {
+                this.value = max;
+                alert('La quantità richiesta non è disponibile');
+            }
+            
+            // Impedisce quantità negative
+            if (parseInt(this.value) < 1) {
+                this.value = 1;
+            }
+        });
+    });
+});
+</script>
+
+<?php
+// Include footer
+include 'footer.php';
+
+// Close database connection
+$conn->close();
+?>
