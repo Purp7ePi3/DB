@@ -3,7 +3,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
+$base_url = "/DataBase";
 // Clear all session variables
 $_SESSION = array();
 
@@ -21,6 +21,6 @@ if (isset($_COOKIE['remember_user'])) {
 session_destroy();
 
 // Redirect to home page with logout message
-header("Location: index.php?logout=success");
+header("Location: $base_url/public/index.php");
 exit;
 ?>

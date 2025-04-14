@@ -4,18 +4,20 @@ echo "Document Root: " . $_SERVER['DOCUMENT_ROOT'] . "<br>";
 echo "Script Filename: " . $_SERVER['SCRIPT_FILENAME'] . "<br>";
 echo "PHP_SELF: " . $_SERVER['PHP_SELF'] . "<br>";
 echo "</div>";
+
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// If user is already logged in, redirect to home page
-if (isset($_SESSION['user_id'])) {
-    header("Location: ../index.php");
-    exit;
-}
 
 $root_path = $_SERVER['DOCUMENT_ROOT'];
-$base_url = "/DataBase/"; // URL base relativo alla radice del server
+$base_url = "/DataBase";
+
+// If user is already logged in, redirect to home page
+if (isset($_SESSION['user_id'])) {
+    header("Location: $base_url/public/index.php");
+    exit;
+}
 
 // Include database configuration
 require_once '../config/config.php';
@@ -33,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Per favore, inserisci sia l'email che la password.";
     } else {
         // Prepare SQL to check user credentials
-        $sql = "SELECT id, username, email, password_hash, is_admin FROM accounts WHERE email = ?";
+        $sql = "SELECT id, username, email, password_hash, is_active FROM accounts WHERE email = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -43,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $result->fetch_assoc();
             
             // Verify password - in production, use password_verify() instead of direct comparison
-            if (password_verify($password, $user['password_hash'])) {
+            if ($password == $user['password_hash']) {
                 // Password is correct, set session variables
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
@@ -62,7 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     unset($_SESSION['redirect_url']);
                     header("Location: $redirect");
                 } else {
-                    header("Location: ../index.php");
+                    header("Location: $base_url/public/index.php");
+
                 }
                 exit;
             } else {
@@ -75,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Include header - use absolute path to ensure CSS loads correctly
-include_once $root_path . $base_url . 'public/partials/header.php';
+include_once $root_path . $base_url . '/public/partials/header.php';
 ?>
 
 <section class="auth-container">

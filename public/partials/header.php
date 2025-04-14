@@ -46,7 +46,7 @@ $base_url = isset($base_path) ? $base_path : '';
                                 <a href="orders.php">I miei ordini</a>
                                 <a href="listings.php">I miei annunci</a>
                                 <a href="wishlist.php">Wishlist</a>
-                                <a href="logout.php">Logout</a>
+                                <a href="<?php echo BASE_URL; ?>/auth/logout.php">Logout</a>
                             </div>
                         </div>
                     <?php else: ?>
