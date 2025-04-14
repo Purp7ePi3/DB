@@ -2,82 +2,39 @@
 // Includi il file di configurazione
 require_once 'config.php';
 $debug_mode = true;
+
 // Imposta valori predefiniti per ordinamento e filtri
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'latest';
-$game_id = isset($_GET['game_id']) ? (int)$_GET['game_id'] : 0;
-$expansion_id = isset($_GET['expansion_id']) ? (int)$_GET['expansion_id'] : 0;
-$condition_id = isset($_GET['condition_id']) ? (int)$_GET['condition_id'] : 0;
-$rarity_id = isset($_GET['rarity_id']) ? (int)$_GET['rarity_id'] : 0;
-$min_price = isset($_GET['min_price']) ? (float)$_GET['min_price'] : 0;
-$max_price = isset($_GET['max_price']) ? (float)$_GET['max_price'] : 0;
-$search = isset($_GET['search']) ? $_GET['search'] : '';
+$sort = $_GET['sort'] ?? 'latest';
+$game_id = (int)($_GET['game_id'] ?? 0);
+$expansion_id = (int)($_GET['expansion_id'] ?? 0);
+$condition_id = (int)($_GET['condition_id'] ?? 0);
+$rarity_id = (int)($_GET['rarity_id'] ?? 0);
+$min_price = (float)($_GET['min_price'] ?? 0);
+$max_price = (float)($_GET['max_price'] ?? 0);
+$search = $_GET['search'] ?? '';
 
-// Inizializza la clausola WHERE della query
-//$where_clauses = ["l.is_active = TRUE", "l.quantity > 0"];  // Add check for quantity to show only available items
-$where_clauses = ["1=1"]; // This will match everything
-
-// Aggiungi filtri alla query se specificati
-if ($game_id > 0) {
-    $where_clauses[] = "e.game_id = " . $game_id;
-}
-if ($expansion_id > 0) {
-    $where_clauses[] = "sc.expansion_id = " . $expansion_id;
-}
-if ($condition_id > 0) {
-    $where_clauses[] = "l.condition_id = " . $condition_id;
-}
-if ($rarity_id > 0) {
-    $where_clauses[] = "sc.rarity_id = " . $rarity_id;
-}
-if ($min_price > 0) {
-    $where_clauses[] = "l.price >= " . $min_price;
-}
-if ($max_price > 0) {
-    $where_clauses[] = "l.price <= " . $max_price;
-}
+$where_clauses = ["1=1"];
+if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
+if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
+if ($condition_id > 0) $where_clauses[] = "l.condition_id = $condition_id";
+if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
+if ($min_price > 0) $where_clauses[] = "l.price >= $min_price";
+if ($max_price > 0) $where_clauses[] = "l.price <= $max_price";
 if (!empty($search)) {
     $search = $conn->real_escape_string($search);
     $where_clauses[] = "(sc.name_en LIKE '%$search%' OR e.name LIKE '%$search%')";
 }
-
-// Costruisci la clausola WHERE finale
 $where_clause = implode(" AND ", $where_clauses);
 
-if ($debug_mode) {
-    echo "<div class='debug-info'>";
-    echo "<h3>Debug Information</h3>";
-    echo "<p>SQL Query: " . htmlspecialchars($sql) . "</p>";
-    echo "<p>Rows returned: " . ($result ? $result->num_rows : 'Query failed') . "</p>";
-    if (!$result) {
-        echo "<p>Error: " . $conn->error . "</p>";
-    }
-    echo "</div>";
-}
-// Imposta l'ordinamento in base alla selezione
 switch ($sort) {
-    case 'price_asc':
-        $order_by = "l.price ASC";
-        break;
-    case 'price_desc':
-        $order_by = "l.price DESC";
-        break;
-    case 'name_asc':
-        $order_by = "sc.name_en ASC";
-        break;
-    case 'name_desc':
-        $order_by = "sc.name_en DESC";
-        break;
-    case 'latest':
-    default:
-        $order_by = "l.created_at DESC";
-        break;
+    case 'price_asc': $order_by = "l.price ASC"; break;
+    case 'price_desc': $order_by = "l.price DESC"; break;
+    case 'name_asc': $order_by = "sc.name_en ASC"; break;
+    case 'name_desc': $order_by = "sc.name_en DESC"; break;
+    default: $order_by = "l.created_at DESC"; break;
 }
 
-// Add debug query option
-$debug_query = isset($_GET['debug']) && $_GET['debug'] == 1;
-
-// Query per ottenere le carte in base ai filtri
-$sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url, sc.collector_number, 
+$sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url, sc.collector_number,
         e.name as expansion_name, g.display_name as game_name, cc.condition_name, u.username as seller_name,
         up.rating as seller_rating
         FROM listings l
@@ -91,40 +48,52 @@ $sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_u
         ORDER BY $order_by
         LIMIT 24";
 
-// Print query for debugging if requested
-if ($debug_query) {
-    echo "<pre>$sql</pre>";
+if ($debug_mode) {
+    echo "<div class='debug-info' style='background-color:#f8f9fa;padding:15px;margin-bottom:20px;border:1px solid #ddd;'>";
+    echo "<h3>Debug Information</h3>";
+    echo "<p><strong>SQL Query:</strong> " . htmlspecialchars($sql) . "</p>";
+    $tables = ["listings", "single_cards", "expansions", "games", "card_conditions", "accounts", "user_profiles"];
+    echo "<h4>Table Check:</h4><ul>";
+    foreach ($tables as $table) {
+        $exists = $conn->query("SHOW TABLES LIKE '$table'")->num_rows > 0 ? "Exists" : "Missing";
+        echo "<li>$table: $exists</li>";
+    }
+    echo "</ul>";
+    $count_res = $conn->query("SELECT COUNT(*) as count FROM listings");
+    echo $count_res ? "<p><strong>Total listings:</strong> " . $count_res->fetch_assoc()['count'] . "</p>" : "<p><strong>Error:</strong> {$conn->error}</p>";
 }
 
 $result = $conn->query($sql);
-
-// Check for MySQL errors
-if (!$result) {
-    $error_message = "Errore nella query: " . $conn->error;
+if ($debug_mode) {
+    echo "<p><strong>Rows returned:</strong> " . ($result ? $result->num_rows : 'Query failed') . "</p>";
+    if (!$result) echo "<p><strong>Error:</strong> {$conn->error}</p>";
+    echo "</div>";
 }
 
-// Query per ottenere tutti i giochi per il filtro
+if (!$result) $error_message = "Errore nella query: {$conn->error}";
+
+// Queries for filters
 $sql_games = "SELECT id, display_name FROM games ORDER BY display_name";
 $result_games = $conn->query($sql_games);
-
-// Query per ottenere le condizioni per il filtro
 $sql_conditions = "SELECT id, condition_name FROM card_conditions ORDER BY id";
 $result_conditions = $conn->query($sql_conditions);
-
-// Query per ottenere le rarità per il filtro
 $sql_rarities = "SELECT id, rarity_name FROM card_rarities ORDER BY id";
 $result_rarities = $conn->query($sql_rarities);
-
-// Query per ottenere le espansioni se è stato selezionato un gioco
 $result_expansions = null;
 if ($game_id > 0) {
-    $sql_expansions = "SELECT id, name FROM expansions WHERE game_id = $game_id ORDER BY name";
-    $result_expansions = $conn->query($sql_expansions);
+    $result_expansions = $conn->query("SELECT id, name FROM expansions WHERE game_id = $game_id ORDER BY name");
 }
 
-// Includi l'header
 include 'header.php';
+
 ?>
+
+<style>
+    .cards-grid { border: 2px solid red; padding: 20px; }
+    .card-item { border: 2px solid blue; margin: 10px; padding: 10px; display: block; }
+</style>
+
+<!-- Rest of your HTML stays the same -->
 
 <div class="marketplace-container">
     <div class="filters-sidebar">
@@ -287,18 +256,22 @@ include 'header.php';
         <div class="sort-mobile">
             <label for="sort-mobile">Ordina per:</label>
             <select id="sort-mobile" onchange="document.getElementById('sort').value=this.value; document.getElementById('filter-form').submit();">
-                <option value="latest" <?php echo ($sort == 'latest') ? 'selected' : ''; ?>>Più recenti</option>
-                <option value="price_asc" <?php echo ($sort == 'price_asc') ? 'selected' : ''; ?>>Prezzo crescente</option>
-                <option value="price_desc" <?php echo ($sort == 'price_desc') ? 'selected' : ''; ?>>Prezzo decrescente</option>
-                <option value="name_asc" <?php echo ($sort == 'name_asc') ? 'selected' : ''; ?>>Nome A-Z</option>
-                <option value="name_desc" <?php echo ($sort == 'name_desc') ? 'selected' : ''; ?>>Nome Z-A</option>
-            </select>
+            <option value="latest" <?php echo ($sort == 'latest') ? 'selected' : ''; ?>>Più recenti</option>
+            <option value="price_asc" <?php echo ($sort == 'price_asc') ? 'selected' : ''; ?>>Prezzo crescente</option>
+            <option value="price_desc" <?php echo ($sort == 'price_desc') ? 'selected' : ''; ?>>Prezzo decrescente</option>
+            <option value="name_asc" <?php echo ($sort == 'name_asc') ? 'selected' : ''; ?>>Nome A-Z</option>
+            <option value="name_desc" <?php echo ($sort == 'name_desc') ? 'selected' : ''; ?>>Nome Z-A</option>
+        </select>
         </div>
         
         <div class="cards-grid marketplace-grid">
             <?php
             if ($result && $result->num_rows > 0) {
+                echo "<p>Processing " . $result->num_rows . " cards...</p>";
+                $card_count = 0;
                 while($card = $result->fetch_assoc()) {
+                    $card_count++;
+                    echo "<p>Card #{$card_count}: {$card['name_en']}</p>";
                     ?>
                     <div class="card-item">
                         <a href="listing.php?id=<?php echo $card["id"]; ?>">
