@@ -1,6 +1,13 @@
 <?php
 // Includi il file di configurazione
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 require_once '../config/config.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $debug_db = $conn->query("SELECT COUNT(*) as count FROM listings");
 $debug_cards = $debug_db->fetch_assoc()['count'];
 if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
@@ -11,8 +18,6 @@ if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
 } else {
     $debug_mode = false;
 }
-
-$debug_mode = false; // Set to true to see debugging information
 
 // Imposta valori predefiniti per ordinamento e filtri
 $sort = $_GET['sort'] ?? 'latest';
@@ -33,8 +38,6 @@ if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
 if ($min_price > 0) $where_clauses[] = "l.price >= $min_price";
 if ($max_price > 0) $where_clauses[] = "l.price <= $max_price";
 
-$where_clause = !empty($where_clauses) ? implode(" AND ", $where_clauses) : "1=1";
-
 switch ($sort) {
     case 'price_asc': $order_by = "l.price ASC"; break;
     case 'price_desc': $order_by = "l.price DESC"; break;
@@ -48,11 +51,11 @@ if (!empty($search)) {
     $where_clauses[] = "(sc.name_en LIKE '%$search%' OR e.name LIKE '%$search%')";
 }
 
+$where_clause = !empty($where_clauses) ? implode(" AND ", $where_clauses) : "1=1";
 
 
-$sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url, sc.collector_number,
-        e.name as expansion_name, g.display_name as game_name, cc.condition_name, u.username as seller_name,
-        COALESCE(up.rating, 0) as seller_rating
+
+$sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_url, sc.collector_number, e.name as expansion_name, g.display_name as game_name, cc.condition_name, u.username as seller_name, COALESCE(up.rating, 0) as seller_rating 
         FROM listings l
         JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
         LEFT JOIN expansions e ON sc.expansion_id = e.id
@@ -60,9 +63,8 @@ $sql = "SELECT l.id, l.price, l.condition_id, l.quantity, sc.name_en, sc.image_u
         LEFT JOIN card_conditions cc ON l.condition_id = cc.id
         JOIN accounts u ON l.seller_id = u.id
         LEFT JOIN user_profiles up ON u.id = up.user_id
-        WHERE $where_clause
-        ORDER BY $order_by
-        LIMIT 24";
+        WHERE l.is_active = TRUE
+        ORDER BY l.created_at DESC";
 
 if ($debug_mode) {
     echo "<div class='debug-info' style='background-color:#f8f9fa;padding:15px;margin-bottom:20px;border:1px solid #ddd;'>";
@@ -275,7 +277,9 @@ include __DIR__ . '/partials/header.php';
         <div class="cards-grid">
             <?php
             if ($result && $result->num_rows > 0) {
+                var_dump($result); 
                 while($card = $result->fetch_assoc()) {
+                    var_dump($card);
                     ?>
                     <div class="card-item">
                         <a href="listing.php?id=<?php echo $card["id"]; ?>">
@@ -291,7 +295,7 @@ include __DIR__ . '/partials/header.php';
                                 <p class="expansion"><?php echo htmlspecialchars($card["expansion_name"]); ?> (<?php echo htmlspecialchars($card["game_name"]); ?>)</p>
                                 <p class="condition">Condizione: <?php echo htmlspecialchars($card["condition_name"]); ?></p>
                                 <p class="seller">Venditore: <?php echo htmlspecialchars($card["seller_name"]); ?> 
-                                    <span class="rating"><?php echo str_repeat('★', round($card["seller_rating"])) . str_repeat('☆', 5 - round($card["seller_rating"])); ?></span>
+                                    <span class="rating"><?php $rating = min(5, max(0, round($card["seller_rating"]))); echo str_repeat('★', $rating) . str_repeat('☆', 5 - $rating); ?></span>
                                 </p>
                                 <div class="price-container">
                                     <span class="price"><?php echo number_format($card["price"], 2, ',', '.'); ?> €</span>
@@ -317,143 +321,5 @@ include __DIR__ . '/partials/header.php';
         </div>
     </div>
 </div>
-
-<button id="filter-toggle" class="btn btn-primary mobile-only">
-    <i class="fa fa-filter"></i> Filtri
-</button>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Gestione apertura/chiusura filtri su mobile
-        const filterToggle = document.getElementById('filter-toggle');
-        const filtersSidebar = document.querySelector('.filters-sidebar');
-        
-        if (filterToggle && filtersSidebar) {
-            filterToggle.addEventListener('click', function() {
-                filtersSidebar.classList.toggle('active');
-            });
-            
-            // Chiudi i filtri quando si clicca fuori
-            document.addEventListener('click', function(event) {
-                if (!filtersSidebar.contains(event.target) && event.target !== filterToggle) {
-                    filtersSidebar.classList.remove('active');
-                }
-            });
-        }
-        
-        // Add to cart functionality
-        const addToCartButtons = document.querySelectorAll('.btn-cart');
-        addToCartButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Add animation class
-                this.classList.add('adding');
-                
-                // Get the listing ID and add to cart
-                const listingId = this.getAttribute('data-listing-id');
-                if (listingId) {
-                    addToCart(listingId, this);
-                }
-            });
-        });
-        
-        // Function to add item to cart via AJAX
-        function addToCart(listingId, button) {
-            fetch('add_to_cart.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'listing_id=' + listingId
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Remove animation class
-                button.classList.remove('adding');
-                
-                if (data.success) {
-                    // Update cart count in the UI
-                    updateCartCount(data.cartCount);
-                    
-                    // Show success feedback
-                    const originalText = button.innerHTML;
-                    button.innerHTML = '<i class="fas fa-check"></i> Aggiunto';
-                    
-                    // Reset button after 2 seconds
-                    setTimeout(function() {
-                        button.innerHTML = originalText;
-                    }, 2000);
-                } else {
-                    // Show error message
-                    alert(data.message || 'Errore durante l\'aggiunta al carrello');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                button.classList.remove('adding');
-                alert('Si è verificato un errore. Riprova più tardi.');
-            });
-        }
-        
-        // Function to update cart count in the header
-        function updateCartCount(count) {
-            const cartCountElement = document.querySelector('.cart-count');
-            if (cartCountElement) {
-                cartCountElement.textContent = count;
-                
-                // Add animation to highlight the change
-                cartCountElement.classList.add('updated');
-                setTimeout(() => {
-                    cartCountElement.classList.remove('updated');
-                }, 500);
-            }
-        }
-        
-        // Wishlist functionality
-        const wishlistButtons = document.querySelectorAll('.btn-wishlist');
-        wishlistButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const cardId = this.getAttribute('data-card-id');
-                if (cardId) {
-                    toggleWishlist(cardId, this);
-                }
-            });
-        });
-        
-        function toggleWishlist(cardId, button) {
-            fetch('toggle_wishlist.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'card_id=' + cardId
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Toggle icon based on wishlist status
-                    if (data.inWishlist) {
-                        button.innerHTML = '<i class="fas fa-heart"></i>';
-                        button.classList.add('active');
-                    } else {
-                        button.innerHTML = '<i class="far fa-heart"></i>';
-                        button.classList.remove('active');
-                    }
-                } else {
-                    alert(data.message || 'Errore durante l\'aggiornamento della wishlist');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Si è verificato un errore. Riprova più tardi.');
-            });
-        }
-    });
-</script>
 
 <?php include __DIR__ . '/partials/footer.php'; ?>

@@ -3,16 +3,14 @@
 require_once '../config/config.php';
 
 // Query per ottenere le carte più recenti (ultimi annunci)
-$sql_latest = "SELECT l.id, l.price, l.condition_id, sc.name_en, sc.image_url, sc.collector_number, 
-               e.name as expansion_name, g.display_name as game_name, cc.condition_name
-               FROM listings l
-               JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
-               JOIN expansions e ON sc.expansion_id = e.id
-               JOIN games g ON e.game_id = g.id
-               JOIN card_conditions cc ON l.condition_id = cc.id
-               WHERE l.is_active = TRUE
-               ORDER BY l.created_at DESC
-               LIMIT 12";
+$sql_latest = "SELECT sc.name_en, sc.image_url, sc.collector_number,
+                e.name AS expansion_name,
+                g.display_name AS game_name
+                FROM single_cards sc
+                JOIN expansions e ON sc.expansion_id = e.id
+                JOIN games g ON e.game_id = g.id
+                ORDER BY RAND()
+                LIMIT 12";
 $result_latest = $conn->query($sql_latest);
 
 // Query per ottenere le carte più costose
@@ -25,7 +23,7 @@ $sql_expensive = "SELECT l.id, l.price, l.condition_id, sc.name_en, sc.image_url
                   JOIN card_conditions cc ON l.condition_id = cc.id
                   WHERE l.is_active = TRUE
                   ORDER BY l.price DESC
-                  LIMIT 4";
+                  LIMIT 8";
 $result_expensive = $conn->query($sql_expensive);
 
 // Includi l'header
@@ -38,7 +36,7 @@ include 'partials/header.php';
         <p>Compra e vendi carte di Magic: The Gathering, Pokémon, Yu-Gi-Oh! e molti altri giochi!</p>
         <div class="hero-buttons">
             <a href="marketplace.php" class="btn btn-primary">Esplora il marketplace</a>
-            <a href="regi   er.php" class="btn">Registrati ora</a>
+            <a href="register.php" class="btn">Registrati ora</a>
         </div>
     </div>
 </section>
@@ -66,14 +64,14 @@ include 'partials/header.php';
 </section>
 
 <section class="latest-listings">
-    <h2>Ultimi annunci</h2>
+    <h2>Random Cards</h2>
     <div class="cards-grid">
         <?php
         if ($result_latest->num_rows > 0) {
             while($card = $result_latest->fetch_assoc()) {
                 ?>
                 <div class="card-item">
-                    <a href="listing.php?id=<?php echo $card["id"]; ?>">
+                    <!-- <a href="listing.php?id=<?php echo $card["id"]; ?>"> -->
                         <div class="card-image">
                             <?php if ($card["image_url"]): ?>
                                 <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
@@ -86,19 +84,19 @@ include 'partials/header.php';
                             <p class="card-expansion"><?php echo htmlspecialchars($card["expansion_name"]); ?> (#<?php echo htmlspecialchars($card["collector_number"]); ?>)</p>
                             <p class="card-game"><?php echo htmlspecialchars($card["game_name"]); ?></p>
                             <div class="card-details">
-                                <span class="card-condition"><?php echo htmlspecialchars($card["condition_name"]); ?></span>
-                                <span class="card-price"><?php echo number_format($card["price"], 2, ',', '.'); ?> €</span>
+                                <!-- <span class="card-condition"><?php echo htmlspecialchars($card["condition_name"]); ?></span> -->
+                                <!-- <span class="card-price"><?php echo number_format($card["price"], 2, ',', '.'); ?> €</span> -->
                             </div>
                         </div>
                     </a>
-                    <div class="card-actions">
+                    <!-- <div class="card-actions">
                         <a href="add_to_cart.php?listing_id=<?php echo $card["id"]; ?>" class="btn-cart">
                             <i class="fas fa-cart-plus"></i> Aggiungi al carrello
-                        </a>
-                        <a href="add_to_wishlist.php?card_id=<?php echo $card["id"]; ?>" class="btn-wishlist">
+                        </a> 
+                         <a href="add_to_wishlist.php?card_id=<?php echo $card["id"]; ?>" class="btn-wishlist">
                             <i class="fas fa-heart"></i>
                         </a>
-                    </div>
+                    </div> -->
                 </div>
                 <?php
             }
@@ -107,9 +105,9 @@ include 'partials/header.php';
         }
         ?>
     </div>
-    <div class="view-more">
+    <!-- <div class="view-more">
         <a href="marketplace.php" class="btn">Visualizza tutti gli annunci</a>
-    </div>
+    </div> -->
 </section>
 
 <section class="featured-cards">

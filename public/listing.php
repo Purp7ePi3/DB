@@ -18,11 +18,11 @@ $user_id = $_SESSION['user_id'] ?? 0;
 
 // Get listing details
 $sql = "SELECT l.id, l.price, l.quantity, l.description, l.condition_id, l.seller_id, l.created_at,
-        sc.name_en, sc.name_it, sc.image_url, sc.collector_number, sc.rarity_id, 
-        e.name as expansion_name, e.code as expansion_code, e.release_date as expansion_release,
+        sc.name_en, sc.image_url, sc.collector_number, sc.rarity_id, 
+        e.name as expansion_name, e.code as expansion_code,
         g.display_name as game_name, g.id as game_id,
         cc.condition_name, cr.rarity_name,
-        u.username as seller_name, up.rating as seller_rating, up.total_sales
+        u.username as seller_name, up.rating as seller_rating
         FROM listings l
         JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
         JOIN expansions e ON sc.expansion_id = e.id
@@ -110,8 +110,8 @@ include 'header.php';
         
         <div class="card-details-container">
             <h1><?php echo htmlspecialchars($listing["name_en"]); ?></h1>
-            <?php if (!empty($listing["name_it"])): ?>
-                <h2 class="alternate-name"><?php echo htmlspecialchars($listing["name_it"]); ?></h2>
+            <?php if (!empty($listing["name_en"])): ?>
+                <h2 class="alternate-name"><?php echo htmlspecialchars($listing["name_en"]); ?></h2>
             <?php endif; ?>
             
             <div class="card-meta">
