@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $root_path = $_SERVER['DOCUMENT_ROOT'];
 $base_url = "/DataBase";
+
 // Include database configuration
 require_once '../config/config.php';
 

@@ -3,13 +3,15 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+$root_path = $_SERVER['DOCUMENT_ROOT'];
+$base_url = "/DataBase";
 
 // Include database configuration
-require_once 'config\config.php';
+require_once '../config/config.php';
 
 // Check if user is logged in and is an admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
-    header("Location: login.php");
+    header("Location: $base_url/public/index.php");
     exit;
 }
 
@@ -45,10 +47,10 @@ $result_orders = $conn->query($sql_orders);
 $total_orders = $result_orders->fetch_assoc()['total'];
 
 // Get recent orders
-$sql_recent_orders = "SELECT o.id, o.total_amount, o.created_at, o.status, 
+$sql_recent_orders = "SELECT o.id, o.total_price as total_amount, o.order_date as created_at, o.status, 
                       a.username FROM orders o 
-                      JOIN accounts a ON o.user_id = a.id 
-                      ORDER BY o.created_at DESC LIMIT 10";
+                      JOIN accounts a ON o.buyer_id = a.id 
+                      ORDER BY o.order_date DESC LIMIT 10";
 $result_recent_orders = $conn->query($sql_recent_orders);
 
 // Get sales by game
