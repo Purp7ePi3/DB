@@ -69,6 +69,7 @@ $sql = "SELECT
 
 // Add debug output to see what's happening
 $result = $conn->query($sql);
+print_r($result);
 $error_message = null;
 
 if (!$result) {
@@ -144,28 +145,21 @@ include __DIR__ . '/partials/header.php';
         <div class="cards-grid">
             <?php
             // Make sure to reset the result pointer if you've used it earlier
-            if ($result) {
-                $result->data_seek(0);
-            }
+            // if ($result) {
+            //     $result->data_seek(0);
+            // }
             
             // Explicitly check if we have results
             if ($result && $result->num_rows > 0) {
                 // Loop through each row
                 while ($card = $result->fetch_assoc()) {
-                    // Debug output for first card
-                    if (!isset($first_card_shown)) {
-                        echo '<div style="background: #f5f5f5; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">';
-                        echo '<strong>First card data:</strong><pre>';
-                        print_r($card);
-                        echo '</pre></div>';
-                        $first_card_shown = true;
-                    }
+                    print_r($card);
             ?>
                     <div class="card-item">
                         <a href="listing.php?id=<?php echo $card["id"]; ?>">
                             <div class="card-image">
                                 <?php if (isset($card["image_url"]) && !empty($card["image_url"])): ?>
-                                    <img src="https://www.cardtrader.com/images/games/<?php echo htmlspecialchars($card["sc.image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"] ?? 'Card'); ?>" loading="lazy">
+                                    <img src="https://www.cardtrader.com/images/games/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"] ?? 'Card'); ?>" loading="lazy">
                                 <?php else: ?>
                                     <div class="no-image">Immagine non disponibile</div>
                                 <?php endif; ?>
