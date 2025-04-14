@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 // If user is already logged in, redirect to home page
 if (isset($_SESSION['user_id'])) {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit;
 }
 
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Per favore, inserisci sia l'email che la password.";
     } else {
         // Prepare SQL to check user credentials
-        $sql = "SELECT id, username, email, password_hash FROM accounts WHERE email = ?";
+        $sql = "SELECT id, username, email, password_hash, is_admin FROM accounts WHERE email = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -34,12 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
             
-            // Verify password
-            if ($password === $user['password_hash']) {
+            // Verify password - in production, use password_verify() instead of direct comparison
+            if (password_verify($password, $user['password_hash'])) {
                 // Password is correct, set session variables
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['email'] = $user['email'];
+                $_SESSION['is_admin'] = $user['is_admin'] ?? false;
                 
                 // Check if "remember me" is checked
                 if (isset($_POST['remember']) && $_POST['remember'] == 'on') {
@@ -53,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     unset($_SESSION['redirect_url']);
                     header("Location: $redirect");
                 } else {
-                    header("Location: index.php");
+                    header("Location: ../index.php");
                 }
                 exit;
             } else {
@@ -65,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Include header
-include '../public/partials/header.php';
+// Include header - use absolute path to ensure CSS loads correctly
+include_once '../public/partials/header.php';
 ?>
 
 <section class="auth-container">
@@ -109,26 +110,13 @@ include '../public/partials/header.php';
             <button type="submit" class="btn-primary btn-full">Accedi</button>
         </form>
         
-        <!-- <div class="auth-separator">
-            <span>oppure</span>
-        </div>
-        
-         <div class="social-login">
-            <a href="oauth/google.php" class="btn-social btn-google">
-                <i class="fab fa-google"></i> Accedi con Google
-            </a>
-            <a href="oauth/facebook.php" class="btn-social btn-facebook">
-                <i class="fab fa-facebook-f"></i> Accedi con Facebook
-            </a>
-        </div>
-        
         <div class="auth-link">
             Non hai un account? <a href="register.php">Registrati ora</a>
-        </div> -->
+        </div>
     </div>
 </section>
 
 <?php
-// Include footer
-include '../public/partials/footer.php';
+// Include footer - use absolute path to ensure CSS loads correctly
+include_once '../public/partials/footer.php';
 ?>

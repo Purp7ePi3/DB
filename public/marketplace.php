@@ -1,8 +1,7 @@
 <?php
 // Includi il file di configurazione
-
 require_once '../config/config.php';
-$debug_mode = false; // Change to false for production
+$debug_mode = true; // Set to true to see debugging information
 
 // Imposta valori predefiniti per ordinamento e filtri
 $sort = $_GET['sort'] ?? 'latest';
@@ -28,7 +27,7 @@ if (!empty($search)) {
     $where_clauses[] = "(sc.name_en LIKE '%$search%' OR e.name LIKE '%$search%')";
 }
 
-$where_clause = implode(" AND ", $where_clauses);
+$where_clause = !empty($where_clauses) ? implode(" AND ", $where_clauses) : "1=1";
 
 switch ($sort) {
     case 'price_asc': $order_by = "l.price ASC"; break;
@@ -367,7 +366,6 @@ include __DIR__ . '/partials/header.php';
                     
                     // Show success feedback
                     const originalText = button.innerHTML;
-                    button.innerHTML = '<i class="fas  const originalText = button.innerHTML;
                     button.innerHTML = '<i class="fas fa-check"></i> Aggiunto';
                     
                     // Reset button after 2 seconds
