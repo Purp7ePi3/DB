@@ -4,6 +4,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+define('BASE_URL', '/DataBase');
+define('BASE_PATH', dirname(__DIR__));
+
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -11,7 +14,8 @@ if (session_status() === PHP_SESSION_NONE) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Card Collector Center</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+                   
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -43,8 +47,8 @@ if (session_status() === PHP_SESSION_NONE) {
                             </div>
                         </div>
                     <?php else: ?>
-                        <a href="login.php" class="btn">Accedi</a>
-                        <a href="register.php" class="btn btn-primary">Registrati</a>
+                        <a href="/DataBase/auth/login.php" class="btn">Accedi</a>
+                        <a href="/DataBase/auth/register.php" class="btn btn-primary">Registrati</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -58,7 +62,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         <div class="dropdown-content">
                             <?php
                             // Includi il file di configurazione del database
-                            require_once 'config.php';
+                            require_once __DIR__ . '/../../config/config.php';
                             
                             // Query per ottenere tutti i giochi
                             $sql = "SELECT id, display_name FROM games ORDER BY display_name";

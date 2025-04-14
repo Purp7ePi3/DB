@@ -10,7 +10,7 @@ if (isset($_SESSION['user_id'])) {
 }
 
 // Include database configuration
-require_once 'config.php';
+require_once '../config/config.php';
 
 $error_message = '';
 $success_message = '';
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Include header
-include 'header.php';
+include '../public/partials/header.php';
 ?>
 
 <section class="auth-container">
@@ -130,5 +130,5 @@ include 'header.php';
 
 <?php
 // Include footer
-include 'footer.php';
+include '../public/partials/footer.php';
 ?>

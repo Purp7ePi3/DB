@@ -22,7 +22,6 @@
                         // Query per ottenere alcuni giochi per il footer
                         $sql = "SELECT id, display_name FROM games ORDER BY display_name LIMIT 5";
                         $result = $conn->query($sql);
-                        
                         if ($result->num_rows > 0) {
                             while($row = $result->fetch_assoc()) {
                                 echo '<li><a href="game.php?id=' . $row["id"] . '">' . htmlspecialchars($row["display_name"]) . '</a></li>';

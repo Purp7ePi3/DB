@@ -1,6 +1,6 @@
 <?php
 // Includi il file di configurazione
-require_once 'config.php';
+require_once '../config/config.php';
 
 // Query per ottenere le carte più recenti (ultimi annunci)
 $sql_latest = "SELECT l.id, l.price, l.condition_id, sc.name_en, sc.image_url, sc.collector_number, 
@@ -29,7 +29,7 @@ $sql_expensive = "SELECT l.id, l.price, l.condition_id, sc.name_en, sc.image_url
 $result_expensive = $conn->query($sql_expensive);
 
 // Includi l'header
-include 'std/header.php';
+include 'partials/header.php';
 ?>
 
 <section class="hero">
@@ -38,7 +38,7 @@ include 'std/header.php';
         <p>Compra e vendi carte di Magic: The Gathering, Pokémon, Yu-Gi-Oh! e molti altri giochi!</p>
         <div class="hero-buttons">
             <a href="marketplace.php" class="btn btn-primary">Esplora il marketplace</a>
-            <a href="register.php" class="btn">Registrati ora</a>
+            <a href="regi   er.php" class="btn">Registrati ora</a>
         </div>
     </div>
 </section>
@@ -178,9 +178,10 @@ include 'std/header.php';
 </section>
 
 <?php
-// Chiudi la connessione al database
-$conn->close();
+
 
 // Includi il footer
-include 'std/footer.php';
+include 'partials/footer.php';
+// Chiudi la connessione al database
+$conn->close();
 ?>

@@ -1,6 +1,7 @@
 <?php
 // Includi il file di configurazione
-require_once 'config.php';
+
+require_once '../config/config.php';
 $debug_mode = false; // Change to false for production
 
 // Imposta valori predefiniti per ordinamento e filtri
@@ -14,16 +15,19 @@ $max_price = (float)($_GET['max_price'] ?? 0);
 $search = $_GET['search'] ?? '';
 
 $where_clauses = ["l.is_active = TRUE"]; // Add this condition to only show active listings
+
 if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
 if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
 if ($condition_id > 0) $where_clauses[] = "l.condition_id = $condition_id";
 if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
 if ($min_price > 0) $where_clauses[] = "l.price >= $min_price";
 if ($max_price > 0) $where_clauses[] = "l.price <= $max_price";
+
 if (!empty($search)) {
     $search = $conn->real_escape_string($search);
     $where_clauses[] = "(sc.name_en LIKE '%$search%' OR e.name LIKE '%$search%')";
 }
+
 $where_clause = implode(" AND ", $where_clauses);
 
 switch ($sort) {
@@ -84,7 +88,7 @@ if ($game_id > 0) {
     $result_expansions = $conn->query("SELECT id, name FROM expansions WHERE game_id = $game_id ORDER BY name");
 }
 
-include 'header.php';
+include __DIR__ . '/partials/header.php';
 ?>
 
 <div class="marketplace-container">
@@ -363,4 +367,82 @@ include 'header.php';
                     
                     // Show success feedback
                     const originalText = button.innerHTML;
-                    button.innerHTML = '<i class="fas
+                    button.innerHTML = '<i class="fas  const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> Aggiunto';
+                    
+                    // Reset button after 2 seconds
+                    setTimeout(function() {
+                        button.innerHTML = originalText;
+                    }, 2000);
+                } else {
+                    // Show error message
+                    alert(data.message || 'Errore durante l\'aggiunta al carrello');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                button.classList.remove('adding');
+                alert('Si è verificato un errore. Riprova più tardi.');
+            });
+        }
+        
+        // Function to update cart count in the header
+        function updateCartCount(count) {
+            const cartCountElement = document.querySelector('.cart-count');
+            if (cartCountElement) {
+                cartCountElement.textContent = count;
+                
+                // Add animation to highlight the change
+                cartCountElement.classList.add('updated');
+                setTimeout(() => {
+                    cartCountElement.classList.remove('updated');
+                }, 500);
+            }
+        }
+        
+        // Wishlist functionality
+        const wishlistButtons = document.querySelectorAll('.btn-wishlist');
+        wishlistButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const cardId = this.getAttribute('data-card-id');
+                if (cardId) {
+                    toggleWishlist(cardId, this);
+                }
+            });
+        });
+        
+        function toggleWishlist(cardId, button) {
+            fetch('toggle_wishlist.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'card_id=' + cardId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Toggle icon based on wishlist status
+                    if (data.inWishlist) {
+                        button.innerHTML = '<i class="fas fa-heart"></i>';
+                        button.classList.add('active');
+                    } else {
+                        button.innerHTML = '<i class="far fa-heart"></i>';
+                        button.classList.remove('active');
+                    }
+                } else {
+                    alert(data.message || 'Errore durante l\'aggiornamento della wishlist');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Si è verificato un errore. Riprova più tardi.');
+            });
+        }
+    });
+</script>
+
+<?php include __DIR__ . '/partials/footer.php'; ?>
