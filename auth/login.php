@@ -124,5 +124,5 @@ include_once $root_path . $base_url . '/public/partials/header.php';
 
 <?php
 // Include footer - use absolute path to ensure CSS loads correctly
-include_once $root_path . $base_url . '/public/partials/footer.php';
+include '../public/partials/footer.php';
 ?>

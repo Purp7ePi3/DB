@@ -3,9 +3,9 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
 // Include database configuration
 require_once '../config/config.php';
+$base_url = "/DataBase";
 
 // Check if listing ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -88,7 +88,7 @@ $stmt->execute();
 $result_seller = $stmt->get_result();
 
 // Include header
-include 'header.php';
+include __DIR__ . '/partials/header.php';
 ?>
 
 <div class="listing-container">
@@ -102,7 +102,7 @@ include 'header.php';
     <div class="listing-content">
         <div class="card-image-container">
             <?php if ($listing["image_url"]): ?>
-                <img src="https://www.cardtrader.com/images/games/<?php echo htmlspecialchars($listing["image_url"]); ?>" alt="<?php echo htmlspecialchars($listing["name_en"]); ?>" class="card-full-image">
+                <img src="https://www.cardtrader.com<?php echo htmlspecialchars($listing["image_url"]); ?>" alt="<?php echo htmlspecialchars($listing["name_en"]); ?>" class="card-full-image">
             <?php else: ?>
                 <div class="no-image-large">Immagine non disponibile</div>
             <?php endif; ?>
@@ -157,8 +157,7 @@ include 'header.php';
                         <?php echo $in_wishlist ? 'Nella wishlist' : 'Aggiungi a wishlist'; ?>
                     </button>
                 <?php elseif ($user_id == 0): ?>
-                    <a href="login.php" class="btn-primary">Accedi per acquistare</a>
-                <?php else: ?>
+                    <a href="<?= $base_url ?>/DataBase/auth/login.php" class="btn-primary">Accedi per acquistare</a>
                     <p class="your-listing">Questo è il tuo annuncio</p>
                 <?php endif; ?>
             </div>
@@ -210,7 +209,7 @@ include 'header.php';
                 <a href="listing.php?id=<?php echo $seller_card["id"]; ?>">
                     <div class="card-image">
                         <?php if ($seller_card["image_url"]): ?>
-                            <img src="<?php echo htmlspecialchars($seller_card["image_url"]); ?>" alt="<?php echo htmlspecialchars($seller_card["name_en"]); ?>" loading="lazy">
+                            <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($seller_card["image_url"]); ?>" alt="<?php echo htmlspecialchars($seller_card["name_en"]); ?>" loading="lazy">
                         <?php else: ?>
                             <div class="no-image">Immagine non disponibile</div>
                         <?php endif; ?>
@@ -353,4 +352,4 @@ include 'header.php';
     });
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include __DIR__ . '/partials/footer.php'; ?>

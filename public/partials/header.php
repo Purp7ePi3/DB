@@ -18,7 +18,16 @@ $base_url = isset($base_path) ? $base_path : '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Card Collector Center</title>
     <link rel="stylesheet" href="/DataBase/public/assets/css/style.css">
-                   
+            
+    <?php 
+        $current_page = basename($_SERVER['PHP_SELF']);
+        if ($current_page == 'index.php') {
+            echo '<link rel="stylesheet" href="/DataBase/public/asset/css/home-cards.css">';
+        } elseif ($current_page == 'marketplace.php') {
+            echo '<link rel="stylesheet" href="/DataBase/public/asset/css/marketplace-cards.css">';
+        }
+    ?> 
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -62,7 +71,7 @@ $base_url = isset($base_path) ? $base_path : '';
         <nav class="main-nav">
             <div class="container">
                 <ul>
-                    <li><a href="index.php">Home</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/public/index.php">Home</a></li>
                     <li class="dropdown">
                         <a href="#">Giochi <i class="fas fa-chevron-down"></i></a>
                         <div class="dropdown-content">
@@ -86,9 +95,7 @@ $base_url = isset($base_path) ? $base_path : '';
                     <li><a >Guida per venditori</a></li>
                     <li><a >FAQ</a></li>
                     <li><a >Contatti</a></li>
-                    <?php if(isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
-                        <a href="<?php echo BASE_URL; ?>/database/build.php">Statistiche</a>
-                    <?php endif; ?>
+
                 </ul>
             </div>
         </nav>

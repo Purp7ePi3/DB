@@ -184,11 +184,11 @@ include __DIR__ . '/partials/header.php';
                                 <p class="rarity">Rarità: <?php echo htmlspecialchars($card["rarity_name"] ?? 'Unknown'); ?></p>
                             </div>
                         </a>
-                        <div class="card-actions">
+                        <!-- <div class="card-actions">
                             <button class="btn-add" data-card-id="<?php echo $card["id"]; ?>">
                                 <i class="fas fa-plus"></i> Aggiungi alla collezione
                             </button>
-                        </div>
+                        </div> -->
                     </div>
             <?php
                 } // end while
