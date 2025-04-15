@@ -5,3 +5,8 @@ il css fa particolamerente schifo,
 # la funzione per aggiungere le carte
 # e per visualizzare il profilo
 manca altra rova ma non mi viene in mente, sono stanco
+/*Guida per venditori
+FAQ
+Contatti
+*/
+sono messi solo per bellezza, non fanno niente

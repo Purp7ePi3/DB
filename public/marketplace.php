@@ -26,6 +26,8 @@ if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
 if ($for_sale_only == 1) $where_clauses[] = "EXISTS (SELECT 1 FROM listings cl WHERE cl.single_card_id = sc.blueprint_id AND cl.is_active = '1')";
 if (!empty($search)) $where_clauses[] = "sc.name_en LIKE '%" . $conn->real_escape_string($search) . "%'";
 
+$where_clauses[] = "sc.image_url IS NOT NULL";
+
 switch ($sort) {
     case 'name_asc': $order_by = "sc.name_en ASC"; break;
     case 'name_desc': $order_by = "sc.name_en DESC"; break;
@@ -52,7 +54,7 @@ $cards_sql = "SELECT
         LEFT JOIN expansions e ON sc.expansion_id = e.id
         LEFT JOIN games g ON e.game_id = g.id
         LEFT JOIN card_rarities r ON sc.rarity_id = r.id
-        $where_clause and sc.image_url is not null
+        $where_clause
         ORDER BY $order_by
         LIMIT $offset, $per_page";
 
