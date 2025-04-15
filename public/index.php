@@ -29,7 +29,7 @@ $result_expensive = $conn->query($sql_expensive);
 // Includi l'header
 include 'partials/header.php';
 ?>
-
+<link rel="stylesheet" href="/DataBase/public/asset/css/home-cards.css">
 <section class="hero">
     <div class="hero-content">
         <h1>Il mercato italiano per le carte collezionabili</h1>

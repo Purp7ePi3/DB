@@ -18,7 +18,6 @@ $base_url = isset($base_path) ? $base_path : '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Card Collector Center</title>
     <link rel="stylesheet" href="/DataBase/public/assets/css/style.css">
-            
     <?php 
         $current_page = basename($_SERVER['PHP_SELF']);
         if ($current_page == 'index.php') {

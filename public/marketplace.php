@@ -22,6 +22,7 @@ $where_clauses = [];
 if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
 if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
 if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
+if ($listing_id > 0) $where_clauses[] = "sc."
 if (!empty($search)) $where_clauses[] = "sc.name_en LIKE '%" . $conn->real_escape_string($search) . "%'";
 
 switch ($sort) {
