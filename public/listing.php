@@ -49,7 +49,7 @@ $listing = $result->fetch_assoc();
 // Check if in wishlist (if user is logged in)
 $in_wishlist = false;
 if ($user_id > 0) {
-    $sql_wishlist = "SELECT id FROM wishlist_items WHERE user_id = ? AND listing_id = ?";
+    $sql_wishlist = "SELECT id FROM wishlists WHERE user_id = ? AND id = ?";
     $stmt = $conn->prepare($sql_wishlist);
     $stmt->bind_param("ii", $user_id, $listing_id);
     $stmt->execute();

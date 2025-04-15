@@ -14,6 +14,7 @@ $game_id = (int)($_GET['game_id'] ?? 0);
 $expansion_id = (int)($_GET['expansion_id'] ?? 0);
 $rarity_id = (int)($_GET['rarity_id'] ?? 0);
 $search = $_GET['search'] ?? '';
+$for_sale_only = isset($_GET['for_sale_only']) ? (int)$_GET['for_sale_only'] : 0;
 
 // Build the WHERE clause for filtering
 $where_clauses = [];
@@ -22,7 +23,7 @@ $where_clauses = [];
 if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
 if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
 if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
-if ($listing_id > 0) $where_clauses[] = "sc."
+if ($for_sale_only == 1) $where_clauses[] = "EXISTS (SELECT 1 FROM listings cl WHERE cl.single_card_id = sc.blueprint_id AND cl.is_active = '1')";
 if (!empty($search)) $where_clauses[] = "sc.name_en LIKE '%" . $conn->real_escape_string($search) . "%'";
 
 switch ($sort) {
@@ -142,6 +143,13 @@ include __DIR__ . '/partials/header.php';
                 </select>
             </div>
             
+            <div class="filter-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="for_sale_only" name="for_sale_only" value="1" <?php echo $for_sale_only == 1 ? 'checked' : ''; ?>>
+                    Solo carte in vendita
+                </label>
+            </div>
+            
             <div class="filter-actions">
                 <button type="submit" class="btn btn-primary">Applica filtri</button>
                 <a href="marketplace.php" class="btn">Reimposta</a>
@@ -170,7 +178,7 @@ include __DIR__ . '/partials/header.php';
                 while ($card = $cards_result->fetch_assoc()) {
             ?>
                     <div class="card-item">
-                        <a href="card.php?id=<?php echo $card["id"]; ?>">
+                        <a href="listing.php?id=<?php echo $card["id"]; ?>">
                             <div class="card-image">
                                 <?php if (isset($card["image_url"]) && !empty($card["image_url"])): ?>
                                     <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"] ?? 'Card'); ?>" loading="lazy">
@@ -203,7 +211,7 @@ include __DIR__ . '/partials/header.php';
         <?php if ($total_pages > 1): ?>
         <div class="pagination">
             <?php if ($page > 1): ?>
-                <a href="?page=<?php echo ($page - 1); ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?>" class="page-link">&laquo; Precedente</a>
+                <a href="?page=<?php echo ($page - 1); ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?><?php echo $for_sale_only == 1 ? '&for_sale_only=1' : ''; ?>" class="page-link">&laquo; Precedente</a>
             <?php endif; ?>
             
             <?php
@@ -212,11 +220,11 @@ include __DIR__ . '/partials/header.php';
             
             for ($i = $start_page; $i <= $end_page; $i++): 
             ?>
-                <a href="?page=<?php echo $i; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?>" class="page-link <?php echo $i == $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                <a href="?page=<?php echo $i; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?><?php echo $for_sale_only == 1 ? '&for_sale_only=1' : ''; ?>" class="page-link <?php echo $i == $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
             <?php endfor; ?>
             
             <?php if ($page < $total_pages): ?>
-                <a href="?page=<?php echo ($page + 1); ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?>" class="page-link">Successivo &raquo;</a>
+                <a href="?page=<?php echo ($page + 1); ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?><?php echo $for_sale_only == 1 ? '&for_sale_only=1' : ''; ?>" class="page-link">Successivo &raquo;</a>
             <?php endif; ?>
         </div>
         <?php endif; ?>

@@ -1,2 +1,7 @@
 "# DB_Solo" 
-Fixxare il marcket che non mostra le carte, aggiugnere css per le stats, sistmare le collection che non ci sono con gameid=?
+il css fa particolamerente schifo,
+# mettere le immagini per la prima pagina, 
+# creare la whislist, 
+# la funzione per aggiungere le carte
+# e per visualizzare il profilo
+manca altra rova ma non mi viene in mente, sono stanco
