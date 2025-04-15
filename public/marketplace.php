@@ -12,75 +12,71 @@ if (session_status() === PHP_SESSION_NONE) {
 $sort = $_GET['sort'] ?? 'latest';
 $game_id = (int)($_GET['game_id'] ?? 0);
 $expansion_id = (int)($_GET['expansion_id'] ?? 0);
-$condition_id = (int)($_GET['condition_id'] ?? 0);
 $rarity_id = (int)($_GET['rarity_id'] ?? 0);
-$min_price = (float)($_GET['min_price'] ?? 0);
-$max_price = (float)($_GET['max_price'] ?? 0);
 $search = $_GET['search'] ?? '';
 
 // Build the WHERE clause for filtering
 $where_clauses = [];
 
-// For now, ensure we only get active listings
-$where_clauses[] = "l.is_active = TRUE";
-
-// Add other filters (you can uncomment these once the basic display works)
-// if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
-// if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
-// if ($condition_id > 0) $where_clauses[] = "l.condition_id = $condition_id";
-// if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
-// if ($min_price > 0) $where_clauses[] = "l.price >= $min_price";
-// if ($max_price > 0) $where_clauses[] = "l.price <= $max_price";
-// if (!empty($search)) $where_clauses[] = "sc.name_en LIKE '%" . $conn->real_escape_string($search) . "%'";
+// Add filters
+if ($game_id > 0) $where_clauses[] = "e.game_id = $game_id";
+if ($expansion_id > 0) $where_clauses[] = "sc.expansion_id = $expansion_id";
+if ($rarity_id > 0) $where_clauses[] = "sc.rarity_id = $rarity_id";
+if (!empty($search)) $where_clauses[] = "sc.name_en LIKE '%" . $conn->real_escape_string($search) . "%'";
 
 switch ($sort) {
-    case 'price_asc': $order_by = "l.price ASC"; break;
-    case 'price_desc': $order_by = "l.price DESC"; break;
     case 'name_asc': $order_by = "sc.name_en ASC"; break;
     case 'name_desc': $order_by = "sc.name_en DESC"; break;
-    default: $order_by = "l.created_at DESC"; break;
+    default: $order_by = "sc.blueprint_id DESC"; break;
 }
 
 $where_clause = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
 
-// Simple query to test if we can get data
-$sql = "SELECT 
-            l.id, 
-            l.price, 
-            l.condition_id, 
-            l.quantity, 
+// Query to get all single cards with pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$per_page = 30; // Number of cards per page
+$offset = ($page - 1) * $per_page;
+
+// Query for the cards
+$cards_sql = "SELECT 
+            sc.blueprint_id as id, 
             sc.name_en, 
             sc.image_url, 
+            sc.collector_number,
             e.name as expansion_name, 
-            g.display_name as game_name, 
-            cc.condition_name, 
-            u.username as seller_name, 
-            COALESCE(up.rating, 0) as seller_rating 
-        FROM listings l
-        LEFT JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
+            g.display_name as game_name,
+            r.rarity_name
+        FROM single_cards sc
         LEFT JOIN expansions e ON sc.expansion_id = e.id
         LEFT JOIN games g ON e.game_id = g.id
-        LEFT JOIN card_conditions cc ON l.condition_id = cc.id
-        LEFT JOIN accounts u ON l.seller_id = u.id
-        LEFT JOIN user_profiles up ON u.id = up.user_id
-        $where_clause
+        LEFT JOIN card_rarities r ON sc.rarity_id = r.id
+        $where_clause and sc.image_url is not null
         ORDER BY $order_by
-        LIMIT 50";
+        LIMIT $offset, $per_page";
 
-// Add debug output to see what's happening
-$result = $conn->query($sql);
-print_r($result);
+$cards_result = $conn->query($cards_sql);
 $error_message = null;
 
-if (!$result) {
+if (!$cards_result) {
     $error_message = "Errore nella query: {$conn->error}";
 }
+
+// Count total cards for pagination
+$count_sql = "SELECT COUNT(*) as total FROM single_cards sc 
+              LEFT JOIN expansions e ON sc.expansion_id = e.id
+              LEFT JOIN games g ON e.game_id = g.id
+              $where_clause";
+$count_result = $conn->query($count_sql);
+$total_cards = 0;
+if ($count_result) {
+    $count_data = $count_result->fetch_assoc();
+    $total_cards = $count_data['total'];
+}
+$total_pages = ceil($total_cards / $per_page);
 
 // Queries for filters
 $sql_games = "SELECT id, display_name FROM games ORDER BY display_name";
 $result_games = $conn->query($sql_games);
-$sql_conditions = "SELECT id, condition_name FROM card_conditions ORDER BY id";
-$result_conditions = $conn->query($sql_conditions);
 $sql_rarities = "SELECT id, rarity_name FROM card_rarities ORDER BY id";
 $result_rarities = $conn->query($sql_rarities);
 $result_expansions = null;
@@ -115,6 +111,36 @@ include __DIR__ . '/partials/header.php';
                 </select>
             </div>
             
+            <?php if ($result_expansions && $result_expansions->num_rows > 0): ?>
+            <div class="filter-group">
+                <label for="expansion_id">Espansione</label>
+                <select id="expansion_id" name="expansion_id">
+                    <option value="0">Tutte le espansioni</option>
+                    <?php
+                    while($expansion = $result_expansions->fetch_assoc()) {
+                        $selected = ($expansion_id == $expansion["id"]) ? "selected" : "";
+                        echo '<option value="' . $expansion["id"] . '" ' . $selected . '>' . htmlspecialchars($expansion["name"]) . '</option>';
+                    }
+                    ?>
+                </select>
+            </div>
+            <?php endif; ?>
+            
+            <div class="filter-group">
+                <label for="rarity_id">Rarità</label>
+                <select id="rarity_id" name="rarity_id">
+                    <option value="0">Tutte le rarità</option>
+                    <?php
+                    if ($result_rarities && $result_rarities->num_rows > 0) {
+                        while($rarity = $result_rarities->fetch_assoc()) {
+                            $selected = ($rarity_id == $rarity["id"]) ? "selected" : "";
+                            echo '<option value="' . $rarity["id"] . '" ' . $selected . '>' . htmlspecialchars($rarity["rarity_name"]) . '</option>';
+                        }
+                    }
+                    ?>
+                </select>
+            </div>
+            
             <div class="filter-actions">
                 <button type="submit" class="btn btn-primary">Applica filtri</button>
                 <a href="marketplace.php" class="btn">Reimposta</a>
@@ -123,7 +149,7 @@ include __DIR__ . '/partials/header.php';
     </div>
     
     <div class="marketplace-content">
-        <h1>Marketplace</h1>
+        <h1>Le mie carte</h1>
         
         <?php if (isset($error_message)): ?>
             <div class="alert alert-danger">
@@ -131,35 +157,22 @@ include __DIR__ . '/partials/header.php';
             </div>
         <?php endif; ?>
         
-        <!-- Debug output to check query results -->
-        <div style="background: #f5f5f5; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">
-            <?php 
-            if ($result) {
-                echo "Query returned " . $result->num_rows . " rows<br>";
-            } else {
-                echo "Query failed: " . $conn->error . "<br>";
-            }
-            ?>
+        <div class="cards-info">
+            <p>Mostrando <?php echo $cards_result->num_rows; ?> carte su <?php echo $total_cards; ?> totali - Pagina <?php echo $page; ?> di <?php echo $total_pages; ?></p>
         </div>
         
         <div class="cards-grid">
             <?php
-            // Make sure to reset the result pointer if you've used it earlier
-            // if ($result) {
-            //     $result->data_seek(0);
-            // }
-            
             // Explicitly check if we have results
-            if ($result && $result->num_rows > 0) {
+            if ($cards_result && $cards_result->num_rows > 0) {
                 // Loop through each row
-                while ($card = $result->fetch_assoc()) {
-                    print_r($card);
+                while ($card = $cards_result->fetch_assoc()) {
             ?>
                     <div class="card-item">
-                        <a href="listing.php?id=<?php echo $card["id"]; ?>">
+                        <a href="card.php?id=<?php echo $card["id"]; ?>">
                             <div class="card-image">
                                 <?php if (isset($card["image_url"]) && !empty($card["image_url"])): ?>
-                                    <img src="https://www.cardtrader.com/images/games/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"] ?? 'Card'); ?>" loading="lazy">
+                                    <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"] ?? 'Card'); ?>" loading="lazy">
                                 <?php else: ?>
                                     <div class="no-image">Immagine non disponibile</div>
                                 <?php endif; ?>
@@ -167,22 +180,13 @@ include __DIR__ . '/partials/header.php';
                             <div class="card-details">
                                 <h3><?php echo htmlspecialchars($card["name_en"] ?? 'Unknown Card'); ?></h3>
                                 <p class="expansion"><?php echo htmlspecialchars($card["expansion_name"] ?? 'Unknown'); ?> (<?php echo htmlspecialchars($card["game_name"] ?? 'Unknown Game'); ?>)</p>
-                                <p class="condition">Condizione: <?php echo htmlspecialchars($card["condition_name"] ?? 'Unknown'); ?></p>
-                                <p class="seller">Venditore: <?php echo htmlspecialchars($card["seller_name"] ?? 'Unknown'); ?> 
-                                    <span class="rating"><?php $rating = min(5, max(0, round($card["seller_rating"] ?? 0))); echo str_repeat('★', $rating) . str_repeat('☆', 5 - $rating); ?></span>
-                                </p>
-                                <div class="price-container">
-                                    <span class="price"><?php echo number_format($card["price"] ?? 0, 2, ',', '.'); ?> €</span>
-                                    <span class="quantity">Disp: <?php echo $card["quantity"] ?? 0; ?></span>
-                                </div>
+                                <p class="collector">N°: <?php echo htmlspecialchars($card["collector_number"] ?? 'N/A'); ?></p>
+                                <p class="rarity">Rarità: <?php echo htmlspecialchars($card["rarity_name"] ?? 'Unknown'); ?></p>
                             </div>
                         </a>
                         <div class="card-actions">
-                            <button class="btn-cart" data-listing-id="<?php echo $card["id"]; ?>">
-                                <i class="fas fa-cart-plus"></i> Aggiungi
-                            </button>
-                            <button class="btn-wishlist" data-card-id="<?php echo $card["id"]; ?>">
-                                <i class="far fa-heart"></i>
+                            <button class="btn-add" data-card-id="<?php echo $card["id"]; ?>">
+                                <i class="fas fa-plus"></i> Aggiungi alla collezione
                             </button>
                         </div>
                     </div>
@@ -194,27 +198,41 @@ include __DIR__ . '/partials/header.php';
             }
             ?>
         </div>
+        
+        <?php if ($total_pages > 1): ?>
+        <div class="pagination">
+            <?php if ($page > 1): ?>
+                <a href="?page=<?php echo ($page - 1); ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?>" class="page-link">&laquo; Precedente</a>
+            <?php endif; ?>
+            
+            <?php
+            $start_page = max(1, $page - 2);
+            $end_page = min($total_pages, $page + 2);
+            
+            for ($i = $start_page; $i <= $end_page; $i++): 
+            ?>
+                <a href="?page=<?php echo $i; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?>" class="page-link <?php echo $i == $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
+            <?php endfor; ?>
+            
+            <?php if ($page < $total_pages): ?>
+                <a href="?page=<?php echo ($page + 1); ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo $game_id > 0 ? '&game_id=' . $game_id : ''; ?><?php echo $expansion_id > 0 ? '&expansion_id=' . $expansion_id : ''; ?><?php echo $rarity_id > 0 ? '&rarity_id=' . $rarity_id : ''; ?>" class="page-link">Successivo &raquo;</a>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
-<!-- Add basic inline JS for cart functionality -->
+<!-- Add basic inline JS for functionality -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Add to cart functionality
-    const cartButtons = document.querySelectorAll('.btn-cart');
-    cartButtons.forEach(button => {
+    // Add to collection functionality
+    const addButtons = document.querySelectorAll('.btn-add');
+    addButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            alert('Funzionalità in sviluppo');
-        });
-    });
-    
-    // Wishlist functionality
-    const wishlistButtons = document.querySelectorAll('.btn-wishlist');
-    wishlistButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            alert('Funzionalità in sviluppo');
+            const cardId = this.getAttribute('data-card-id');
+            // Here you would implement the logic to add the card to the user's collection
+            alert('Carta aggiunta alla collezione!');
         });
     });
 });

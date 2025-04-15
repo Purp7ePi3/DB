@@ -83,9 +83,12 @@ $base_url = isset($base_path) ? $base_path : '';
                         </div>
                     </li>
                     <li><a href="<?php echo BASE_URL; ?>/public/marketplace.php">Marketplace</a></li>
-                    <li><a href="<?php echo BASE_URL; ?>/public/seller_guide.php">Guida per venditori</a></li>
-                    <li><a href="<?php echo BASE_URL; ?>/public/faq.php">FAQ</a></li>
-                    <li><a href="<?php echo BASE_URL; ?>/public/contact.php">Contatti</a></li>
+                    <li><a >Guida per venditori</a></li>
+                    <li><a >FAQ</a></li>
+                    <li><a >Contatti</a></li>
+                    <?php if(isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
+                        <a href="<?php echo BASE_URL; ?>/database/build.php">Statistiche</a>
+                    <?php endif; ?>
                 </ul>
             </div>
         </nav>

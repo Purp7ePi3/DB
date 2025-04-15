@@ -23,7 +23,8 @@ $sql_getGame = "SELECT
                 JOIN expansions e ON sc.expansion_id = e.id
                 JOIN games g ON e.game_id = g.id
                 WHERE g.id = ?
-                ORDER BY sc.name_en asc";
+                ORDER BY sc.name_en asc
+                limit 30";
 
 $stmt = $conn->prepare($sql_getGame);
 $stmt->bind_param("i", $game_id); // "i" = intero
