@@ -37,8 +37,10 @@ $user = $result_user->fetch_assoc();
 
 // Fetch statistics
 // Cards in collection
-$sql_collection = "SELECT COUNT(*) as collection_count FROM cart_items WHERE user_id = ?";
-$stmt = $conn->prepare($sql_collection);
+$sql_collection = "SELECT COUNT(*) as collection_count 
+                  FROM cart_items ci
+                  JOIN carts c ON ci.cart_id = c.id
+                  WHERE c.user_id = ?";$stmt = $conn->prepare($sql_collection);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $collection_count = $stmt->get_result()->fetch_assoc()['collection_count'];
@@ -68,8 +70,10 @@ $stmt->execute();
 $purchases_count = $stmt->get_result()->fetch_assoc()['purchases_count'];
 
 // Wishlist count
-$sql_wishlist = "SELECT COUNT(*) as wishlist_count FROM wishlist_items WHERE user_id = ?";
-$stmt = $conn->prepare($sql_wishlist);
+$sql_wishlist = "SELECT COUNT(*) as wishlist_count 
+                FROM wishlist_items wi
+                JOIN wishlists w ON wi.wishlist_id = w.id
+                WHERE w.user_id = ?";$stmt = $conn->prepare($sql_wishlist);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $wishlist_count = $stmt->get_result()->fetch_assoc()['wishlist_count'];
@@ -142,150 +146,14 @@ include __DIR__ . '/partials/header.php';
         <div class="profile-actions">
             <a href="edit_profile.php" class="btn btn-primary"><i class="fas fa-edit"></i> Modifica profilo</a>
             <a href="listings.php" class="btn"><i class="fas fa-list"></i> I miei annunci</a>
-            <a href="order.php" class="btn"><i class="fas fa-shopping-bag"></i> I miei ordini</a>
+            <a href="orders.php" class="btn"><i class="fas fa-shopping-bag"></i> I miei ordini</a>
             <a href="wishlist.php" class="btn"><i class="fas fa-heart"></i> La mia wishlist</a>
         </div>
     </div>
 </div>
 
 <style>
-    .profile-container {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-    
-    .profile-header {
-        margin-bottom: 20px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 10px;
-    }
-    
-    .profile-content {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-    
-    .profile-info {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        padding: 20px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-    }
-    
-    .profile-avatar {
-        width: 100px;
-        height: 100px;
-    }
-    
-    .avatar-placeholder {
-        width: 100%;
-        height: 100%;
-        background-color: #3498db;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 3em;
-        border-radius: 50%;
-    }
-    
-    .profile-details {
-        flex-grow: 1;
-    }
-    
-    .profile-details h2 {
-        margin-top: 0;
-        margin-bottom: 10px;
-    }
-    
-    .user-rating {
-        color: #f39c12;
-        font-size: 1.2em;
-        margin: 5px 0;
-    }
-    
-    .user-since, .user-location {
-        color: #666;
-        margin: 5px 0;
-    }
-    
-    .profile-bio {
-        padding: 20px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-    }
-    
-    .profile-bio h3 {
-        margin-top: 0;
-        margin-bottom: 10px;
-    }
-    
-    .profile-stats {
-        padding: 20px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-    }
-    
-    .profile-stats h3 {
-        margin-top: 0;
-        margin-bottom: 15px;
-    }
-    
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 15px;
-    }
-    
-    .stat-item {
-        text-align: center;
-        padding: 15px;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .stat-value {
-        font-size: 1.8em;
-        font-weight: bold;
-        color: #3498db;
-    }
-    
-    .stat-label {
-        margin-top: 5px;
-        color: #666;
-    }
-    
-    .profile-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .profile-actions .btn {
-        flex: 1;
-        min-width: 150px;
-        text-align: center;
-    }
-    
-    @media (max-width: 768px) {
-        .profile-info {
-            flex-direction: column;
-            text-align: center;
-        }
-        
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        
-        .profile-actions {
-            flex-direction: column;
-        }
-    }
+   
 </style>
 
 <?php include __DIR__ . '/partials/footer.php'; ?>

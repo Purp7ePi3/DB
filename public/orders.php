@@ -282,13 +282,7 @@ include __DIR__ . '/partials/header.php';
     .tab:hover {
         color: #3498db;
     }
-    
-    .tab.active {
-        border-bottom-color: #3498db;
-        color: #3498db;
-        font-weight: bold;
-    }
-    
+        
     .orders-list {
         overflow-x: auto;
     }
