@@ -39,7 +39,7 @@ if ($result_card->num_rows === 0) {
 $card = $result_card->fetch_assoc();
 
 // Fetch all listings for this card
-$sql_listings = "SELECT l.id as listing_id, l.price, l.quantity, l.is_foil, l.description, l.created_at,
+$sql_listings = "SELECT l.id as listing_id, l.price, l.quantity, l.description, l.created_at,
                 cc.id as condition_id, cc.condition_name,
                 a.id as seller_id, a.username as seller_name,
                 up.rating as seller_rating
@@ -63,8 +63,8 @@ $user_id = $is_logged_in ? $_SESSION['user_id'] : 0;
 $in_wishlist = false;
 if ($is_logged_in) {
     $sql_wishlist = "SELECT COUNT(*) as count FROM wishlist_items wi
-                     JOIN wishlists w ON wi.wishlist_id = w.id
-                     WHERE w.user_id = ? AND wi.card_id = ?";
+                 JOIN wishlists w ON wi.wishlist_id = w.id
+                 WHERE w.user_id = ? AND wi.single_card_id = ?";
     $stmt = $conn->prepare($sql_wishlist);
     $stmt->bind_param("ii", $user_id, $card_id);
     $stmt->execute();
@@ -95,7 +95,8 @@ if ($is_logged_in && isset($_POST['add_to_wishlist'])) {
     
     // Add card to wishlist if not already there
     if (!$in_wishlist) {
-        $sql_add_to_wishlist = "INSERT INTO wishlist_items (wishlist_id, card_id, added_at) VALUES (?, ?, NOW())";
+        $sql_add_to_wishlist = "INSERT INTO wishlist_items (wishlist_id, single_card_id, desired_condition_id) 
+                        VALUES (?, ?, NULL)";
         $stmt = $conn->prepare($sql_add_to_wishlist);
         $stmt->bind_param("ii", $wishlist_id, $card_id);
         
@@ -111,8 +112,8 @@ if ($is_logged_in && isset($_POST['add_to_wishlist'])) {
 // Handle removing card from wishlist
 if ($is_logged_in && isset($_POST['remove_from_wishlist'])) {
     $sql_remove = "DELETE wi FROM wishlist_items wi
-                  JOIN wishlists w ON wi.wishlist_id = w.id
-                  WHERE w.user_id = ? AND wi.card_id = ?";
+              JOIN wishlists w ON wi.wishlist_id = w.id
+              WHERE w.user_id = ? AND wi.single_card_id = ?";
     $stmt = $conn->prepare($sql_remove);
     $stmt->bind_param("ii", $user_id, $card_id);
     
@@ -132,18 +133,15 @@ if ($is_logged_in && isset($_POST['add_listing'])) {
     $price = $_POST['price'];
     $quantity = $_POST['quantity'];
     $condition_id = $_POST['condition'];
-    $is_foil = isset($_POST['is_foil']) ? 1 : 0;
     $description = $_POST['description'];
     
     // Validate inputs
     if ($price <= 0 || $quantity <= 0 || !is_numeric($condition_id)) {
         $listing_message = "Errore: Verifica i dati inseriti.";
     } else {
-        $sql_add_listing = "INSERT INTO listings (seller_id, single_card_id, price, quantity, condition_id, is_foil, description, is_active, created_at) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, NOW())";
-        $stmt = $conn->prepare($sql_add_listing);
-        $stmt->bind_param("iidiiss", $user_id, $card_id, $price, $quantity, $condition_id, $is_foil, $description);
-        
+        $sql_add_listing = "INSERT INTO listings (seller_id, single_card_id, price, quantity, condition_id, description, is_active, created_at) 
+                   VALUES (?, ?, ?, ?, ?, ?, TRUE, NOW())";
+        $stmt->bind_param("iisiis", $user_id, $card_id, $price, $quantity, $condition_id, $description);      
         if ($stmt->execute()) {
             $listing_message = "Annuncio creato con successo.";
             // Refresh the listings
@@ -323,7 +321,6 @@ include __DIR__ . '/partials/header.php';
                         <tr>
                             <th>Venditore</th>
                             <th>Condizione</th>
-                            <th>Foil</th>
                             <th>Prezzo</th>
                             <th>Disponibilità</th>
                             <th>Azioni</th>
@@ -342,7 +339,6 @@ include __DIR__ . '/partials/header.php';
                                     </div>
                                 </td>
                                 <td><?php echo htmlspecialchars($listing['condition_name']); ?></td>
-                                <td><?php echo $listing['is_foil'] ? 'Sì' : 'No'; ?></td>
                                 <td class="price"><?php echo number_format($listing['price'], 2, ',', '.'); ?> €</td>
                                 <td><?php echo $listing['quantity']; ?></td>
                                 <td class="actions">
@@ -401,12 +397,7 @@ include __DIR__ . '/partials/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
-                    <div class="form-group checkbox">
-                        <input type="checkbox" id="is_foil" name="is_foil">
-                        <label for="is_foil">Foil</label>
-                    </div>
-                    
+                        
                     <div class="form-group">
                         <label for="description">Descrizione (opzionale):</label>
                         <textarea id="description" name="description" rows="3"></textarea>
