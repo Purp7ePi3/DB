@@ -3,12 +3,13 @@
 require_once '../config/config.php';
 
 // Query per ottenere le carte più recenti (ultimi annunci)
-$sql_latest = "SELECT sc.name_en, sc.image_url, sc.collector_number,
+$sql_latest = "SELECT sc.name_en, sc.image_url, sc.collector_number, sc.blueprint_id,
                 e.name AS expansion_name,
                 g.display_name AS game_name
                 FROM single_cards sc
                 JOIN expansions e ON sc.expansion_id = e.id
                 JOIN games g ON e.game_id = g.id
+                
                 ORDER BY RAND()
                 LIMIT 12";
 $result_latest = $conn->query($sql_latest);
@@ -71,8 +72,8 @@ include 'partials/header.php';
             while($card = $result_latest->fetch_assoc()) {
                 ?>
                 <div class="card-item">
-                    <!-- <a href="listing.php?id=<?php echo $card["id"]; ?>"> -->
-                        <div class="card-image">
+                <a href="cards.php?blueprint_id=<?php echo $card["blueprint_id"]; ?>">
+                    <div class="card-image">
                             <?php if ($card["image_url"]): ?>
                                 <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
                             <?php else: ?>
@@ -83,20 +84,8 @@ include 'partials/header.php';
                             <h3><?php echo htmlspecialchars($card["name_en"]); ?></h3>
                             <p class="card-expansion"><?php echo htmlspecialchars($card["expansion_name"]); ?> (#<?php echo htmlspecialchars($card["collector_number"]); ?>)</p>
                             <p class="card-game"><?php echo htmlspecialchars($card["game_name"]); ?></p>
-                            <div class="card-details">
-                                <!-- <span class="card-condition"><?php echo htmlspecialchars($card["condition_name"]); ?></span> -->
-                                <!-- <span class="card-price"><?php echo number_format($card["price"], 2, ',', '.'); ?> €</span> -->
-                            </div>
                         </div>
                     </a>
-                    <!-- <div class="card-actions">
-                        <a href="add_to_cart.php?listing_id=<?php echo $card["id"]; ?>" class="btn-cart">
-                            <i class="fas fa-cart-plus"></i> Aggiungi al carrello
-                        </a> 
-                         <a href="add_to_wishlist.php?card_id=<?php echo $card["id"]; ?>" class="btn-wishlist">
-                            <i class="fas fa-heart"></i>
-                        </a>
-                    </div> -->
                 </div>
                 <?php
             }
@@ -105,9 +94,6 @@ include 'partials/header.php';
         }
         ?>
     </div>
-    <!-- <div class="view-more">
-        <a href="marketplace.php" class="btn">Visualizza tutti gli annunci</a>
-    </div> -->
 </section>
 
 <section class="featured-cards">

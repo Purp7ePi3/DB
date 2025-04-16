@@ -48,11 +48,15 @@ $card = $result_card->fetch_assoc();
 $sql_listings = "SELECT l.id as listing_id, l.price, l.quantity, l.description, l.created_at,
                 cc.id as condition_id, cc.condition_name,
                 a.id as seller_id, a.username as seller_name,
-                up.rating as seller_rating
+                up.rating as seller_rating,
+                sc.name_en as card_name
+
                 FROM listings l
                 JOIN card_conditions cc ON l.condition_id = cc.id
                 JOIN accounts a ON l.seller_id = a.id
                 JOIN user_profiles up ON a.id = up.user_id
+                JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
+
                 WHERE l.single_card_id = ? AND l.is_active = TRUE
                 ORDER BY l.price ASC";
 
@@ -289,6 +293,7 @@ include __DIR__ . '/partials/header.php';
                     <thead>
                         <tr>
                             <th>Venditore</th>
+                            <th>Nome Carta</th>
                             <th>Condizione</th>
                             <th>Prezzo</th>
                             <th>Disponibilità</th>
@@ -307,6 +312,7 @@ include __DIR__ . '/partials/header.php';
                                         <span><?php echo number_format($listing['seller_rating'], 1); ?></span>
                                     </div>
                                 </td>
+                                <td><?php echo htmlspecialchars($listing['card_name']); ?></td>
                                 <td><?php echo htmlspecialchars($listing['condition_name']); ?></td>
                                 <td class="price"><?php echo number_format($listing['price'], 2, ',', '.'); ?> €</td>
                                 <td><?php echo $listing['quantity']; ?></td>
