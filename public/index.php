@@ -118,7 +118,7 @@ include 'partials/header.php';
             while($card = $result_expensive->fetch_assoc()) {
                 ?>
                 <div class="featured-card">
-                    <a href="listings.php?id=<?php echo $card["id"]; ?>">
+                    <a href="cards.php?id=<?php echo $card["id"]; ?>">
                         <div class="featured-image">
                             <?php if ($card["image_url"]): ?>
                                 <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">

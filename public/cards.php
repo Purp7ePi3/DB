@@ -4,6 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
 // Include database configuration
 require_once '../config/config.php';
 $base_url = "/DataBase";
@@ -16,14 +20,16 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $card_id = (int)$_GET['id'];
 
-// Fetch card details
-$sql_card = "SELECT sc.blueprint_id, sc.name_en, sc.image_url, sc.collector_number, sc.rarity_id, 
+// Fetch card details with rarity name
+$sql_card = "SELECT sc.blueprint_id, sc.name_en, sc.image_url, sc.collector_number, 
+             r.id as rarity_id, r.rarity_name, r.description as rarity_description,
              sc.expansion_id,
              e.id as expansion_id, e.name as expansion_name,
              g.id as game_id, g.display_name as game_name
              FROM single_cards sc
              JOIN expansions e ON sc.expansion_id = e.id
              JOIN games g ON e.game_id = g.id
+             LEFT JOIN card_rarities r ON sc.rarity_id = r.id
              WHERE sc.blueprint_id = ?";
 
 $stmt = $conn->prepare($sql_card);
@@ -84,7 +90,7 @@ if ($is_logged_in && isset($_POST['add_to_wishlist'])) {
     
     if ($wishlist_result->num_rows === 0) {
         // Create a new wishlist for the user
-        $sql_create_wishlist = "INSERT INTO wishlists (user_id, created_at) VALUES (?, NOW())";
+        $sql_create_wishlist = "INSERT INTO wishlists (user_id, name, created_at) VALUES (?, 'My Wishlist', NOW())";
         $stmt = $conn->prepare($sql_create_wishlist);
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
@@ -130,18 +136,20 @@ $listing_message = '';
 
 // Handle adding a new listing
 if ($is_logged_in && isset($_POST['add_listing'])) {
-    $price = $_POST['price'];
-    $quantity = $_POST['quantity'];
-    $condition_id = $_POST['condition'];
-    $description = $_POST['description'];
+    $price = (float)$_POST['price'];
+    $quantity = (int)$_POST['quantity'];
+    $condition_id = (int)$_POST['condition'];
+    $description = trim($_POST['description']);
     
     // Validate inputs
-    if ($price <= 0 || $quantity <= 0 || !is_numeric($condition_id)) {
+    if ($price <= 0 || $quantity <= 0 || $condition_id <= 0) {
         $listing_message = "Errore: Verifica i dati inseriti.";
     } else {
-        $sql_add_listing = "INSERT INTO listings (seller_id, single_card_id, price, quantity, condition_id, description, is_active, created_at) 
+        $sql_add_listing = "INSERT INTO listings (seller_id, single_card_id, condition_id, price, quantity, description, is_active, created_at) 
                    VALUES (?, ?, ?, ?, ?, ?, TRUE, NOW())";
-        $stmt->bind_param("iisiis", $user_id, $card_id, $price, $quantity, $condition_id, $description);      
+        $stmt = $conn->prepare($sql_add_listing);
+        $stmt->bind_param("iiidis", $user_id, $card_id, $condition_id, $price, $quantity, $description);
+        
         if ($stmt->execute()) {
             $listing_message = "Annuncio creato con successo.";
             // Refresh the listings
@@ -157,7 +165,7 @@ if ($is_logged_in && isset($_POST['add_listing'])) {
 
 // Handle removing a listing
 if ($is_logged_in && isset($_POST['remove_listing'])) {
-    $listing_id = $_POST['listing_id'];
+    $listing_id = (int)$_POST['listing_id'];
     
     // Verify the listing belongs to the user
     $sql_check = "SELECT id FROM listings WHERE id = ? AND seller_id = ?";
@@ -227,9 +235,6 @@ include __DIR__ . '/partials/header.php';
         
         <div class="card-info">
             <h1><?php echo htmlspecialchars($card["name_en"]); ?></h1>
-            <?php if (!empty($card["name_en"])): ?>
-                <h2><?php echo htmlspecialchars($card["name_en"]); ?></h2>
-            <?php endif; ?>
             
             <div class="card-meta">
                 <div class="meta-row">
@@ -243,59 +248,23 @@ include __DIR__ . '/partials/header.php';
                     <span class="meta-label">Espansione:</span>
                     <span class="meta-value">
                         <a href="expansion.php?id=<?php echo $card["expansion_id"]; ?>"><?php echo htmlspecialchars($card["expansion_name"]); ?></a>
-                        <?php if (!empty($card["release_date"])): ?>
-                            (<?php echo date('Y', strtotime($card["release_date"])); ?>)
-                        <?php endif; ?>
                     </span>
                 </div>
                 
+                <?php if (!empty($card["collector_number"])): ?>
                 <div class="meta-row">
                     <span class="meta-label">Numero collezione:</span>
                     <span class="meta-value"><?php echo htmlspecialchars($card["collector_number"]); ?></span>
                 </div>
+                <?php endif; ?>
                 
-                <?php if (!empty($card["rarity"])): ?>
+                <?php if (!empty($card["rarity_name"])): ?>
                 <div class="meta-row">
                     <span class="meta-label">Rarità:</span>
-                    <span class="meta-value"><?php echo htmlspecialchars($card["rarity"]); ?></span>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($card["card_type"])): ?>
-                <div class="meta-row">
-                    <span class="meta-label">Tipo:</span>
-                    <span class="meta-value"><?php echo htmlspecialchars($card["card_type"]); ?></span>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($card["artist"])): ?>
-                <div class="meta-row">
-                    <span class="meta-label">Artista:</span>
-                    <span class="meta-value"><?php echo htmlspecialchars($card["artist"]); ?></span>
+                    <span class="meta-value"><?php echo htmlspecialchars($card["rarity_name"]); ?></span>
                 </div>
                 <?php endif; ?>
             </div>
-            
-            <?php if (!empty($card["text_en"])): ?>
-            <div class="card-text">
-                <h3>Testo (EN)</h3>
-                <p><?php echo nl2br(htmlspecialchars($card["text_en"])); ?></p>
-            </div>
-            <?php endif; ?>
-            
-            <?php if (!empty($card["text_it"])): ?>
-            <div class="card-text">
-                <h3>Testo (IT)</h3>
-                <p><?php echo nl2br(htmlspecialchars($card["text_it"])); ?></p>
-            </div>
-            <?php endif; ?>
-            
-            <?php if (!empty($card["flavor_text"])): ?>
-            <div class="flavor-text">
-                <h3>Testo di colore</h3>
-                <p><em><?php echo nl2br(htmlspecialchars($card["flavor_text"])); ?></em></p>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
     
@@ -341,7 +310,7 @@ include __DIR__ . '/partials/header.php';
                                 <td><?php echo htmlspecialchars($listing['condition_name']); ?></td>
                                 <td class="price"><?php echo number_format($listing['price'], 2, ',', '.'); ?> €</td>
                                 <td><?php echo $listing['quantity']; ?></td>
-                                <td class="actions">
+                                <td class="action">
                                     <?php if ($listing['seller_id'] == $user_id): ?>
                                         <form method="POST" action="">
                                             <input type="hidden" name="listing_id" value="<?php echo $listing['listing_id']; ?>">
@@ -359,7 +328,7 @@ include __DIR__ . '/partials/header.php';
                             </tr>
                             <?php if (!empty($listing['description'])): ?>
                                 <tr class="description-row">
-                                    <td colspan="6">
+                                    <td colspan="5">
                                         <div class="listing-description">
                                             <strong>Descrizione:</strong> <?php echo nl2br(htmlspecialchars($listing['description'])); ?>
                                         </div>
@@ -411,11 +380,388 @@ include __DIR__ . '/partials/header.php';
         <?php endif; ?>
     </div>
 </div>
+<style>
+    /* Card Details Page Styles */
+.card-details-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 15px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 
+.card-details {
+    display: flex;
+    flex-wrap: wrap;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+/* Card Image */
+.card-image-container {
+    flex: 0 0 300px;
+    padding: 20px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.card-image-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+.no-image {
+    width: 100%;
+    height: 400px;
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: #999;
+    font-style: italic;
+}
+
+.card-actions {
+    margin-top: 20px;
+    width: 100%;
+}
+
+.btn-wishlist {
+    width: 100%;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.btn-wishlist i {
+    margin-right: 5px;
+}
+
+.btn-wishlist:hover {
+    background-color: #e9ecef;
+}
+
+.btn-wishlist.active {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.btn-wishlist.active:hover {
+    background-color: #c82333;
+}
+
+/* Card Information */
+.card-info {
+    flex: 1;
+    padding: 25px;
+    min-width: 300px;
+}
+
+.card-info h1 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 24px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.card-info h2 {
+    font-size: 18px;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+.card-meta {
+    margin-bottom: 20px;
+}
+
+.meta-row {
+    display: flex;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.meta-label {
+    flex: 0 0 150px;
+    font-weight: bold;
+    color: #666;
+}
+
+.meta-value {
+    flex: 1;
+}
+
+.meta-value a {
+    color: #0275d8;
+    text-decoration: none;
+}
+
+.meta-value a:hover {
+    text-decoration: underline;
+}
+
+.card-text, .flavor-text {
+    margin-top: 20px;
+}
+
+.card-text h3, .flavor-text h3 {
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.card-text p, .flavor-text p {
+    line-height: 1.6;
+}
+
+.flavor-text p {
+    font-style: italic;
+    color: #777;
+}
+
+/* Alerts */
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.alert-info {
+    color: #31708f;
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+}
+
+/* Listings Section */
+.listings-section {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+    margin-bottom: 30px;
+}
+
+.listings-section h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 20px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.listings-table {
+    overflow-x: auto;
+}
+
+.listings-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.listings-table th, .listings-table td {
+    padding: 10px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.listings-table th {
+    background-color: #f8f9fa;
+    color: #555;
+    font-weight: 600;
+}
+
+.seller-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.seller-info a {
+    color: #0275d8;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.seller-rating {
+    margin-top: 5px;
+    color: #f8bb00;
+    font-size: 14px;
+}
+
+.seller-rating span {
+    color: #555;
+    margin-left: 5px;
+}
+
+.price {
+    font-weight: 600;
+    color: #28a745;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.btn-add-cart, .btn-remove {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.btn-add-cart {
+    background-color: #007bff;
+    color: white;
+    border: none;
+}
+
+.btn-add-cart:hover {
+    background-color: #0069d9;
+}
+
+.btn-remove {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+}
+
+.btn-remove:hover {
+    background-color: #c82333;
+}
+
+.btn-add-cart i, .btn-remove i {
+    margin-right: 5px;
+}
+
+.description-row {
+    background-color: #fafafa;
+}
+
+.listing-description {
+    padding: 10px 15px;
+    font-size: 14px;
+    color: #666;
+}
+
+.no-listings {
+    text-align: center;
+    padding: 20px;
+    color: #777;
+    font-style: italic;
+}
+
+/* Add Listing Form */
+.add-listing-section {
+    margin-top: 30px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+
+.add-listing-section h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: #333;
+}
+
+.add-listing-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-actions {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.btn-primary:hover {
+    background-color: #0069d9;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .card-image-container {
+        flex: 0 0 100%;
+    }
+    
+    .card-info {
+        padding-top: 0;
+    }
+    
+    .meta-row {
+        flex-direction: column;
+    }
+    
+    .meta-label {
+        margin-bottom: 5px;
+    }
+    
+    .add-listing-form {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 <?php
 // Include footer
 include __DIR__ . '/partials/footer.php';
 
 // Close database connection
 $conn->close();
+
 ?>
