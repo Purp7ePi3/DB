@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['email'] = $user['email'];
                 
                 // Set admin status based on account_type_id
-                $_SESSION['is_admin'] = ($user['account_type_id'] == 2);
+                $_SESSION['is_admin'] = ($user['account_type_id'] == 1);
                 
                 // Check if "remember me" is checked
                 if (isset($_POST['remember']) && $_POST['remember'] == 'on') {
