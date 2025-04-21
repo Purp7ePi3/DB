@@ -9,7 +9,7 @@ $sql_latest = "SELECT sc.name_en, sc.image_url, sc.collector_number, sc.blueprin
                 FROM single_cards sc
                 JOIN expansions e ON sc.expansion_id = e.id
                 JOIN games g ON e.game_id = g.id
-                
+                WHERE sc.image_url IS NOT NULL
                 ORDER BY RAND()
                 LIMIT 12";
 $result_latest = $conn->query($sql_latest);
@@ -52,9 +52,15 @@ include 'partials/header.php';
         
         if ($result_games->num_rows > 0) {
             while($game = $result_games->fetch_assoc()) {
+                // Percorsi per i due possibili formati di immagine
+                $svg_path = "assets/images/" . $game["name"] . "-logo.svg";
+                $png_path = "assets/images/" . $game["name"] . "-logo.png";
+                
+                $image_path = file_exists($svg_path) ? $svg_path : $png_path;
+
                 echo '<a href="game.php?id=' . $game["id"] . '" class="game-card">';
                 echo '<div class="game-logo">';
-                echo '<img src="https://www.cardtrader.com/images/games/' . $game["name"] . '-logo.png" alt="' . htmlspecialchars($game["display_name"]) . '">';
+                echo '<img src="' . $image_path . '" alt="' . htmlspecialchars($game["display_name"]) . '">';
                 echo '</div>';
                 echo '<h3>' . htmlspecialchars($game["display_name"]) . '</h3>';
                 echo '</a>';

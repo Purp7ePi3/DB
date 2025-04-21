@@ -11,7 +11,7 @@ if (isset($_SESSION['user_id'])) {
 
 $base_url = "/DataBase";
 
-$default_account_type_id = 1; // Id non admin
+$default_account_type_id = 1; // Id admin
 
 // Include database configuration
 require_once '../config/config.php';
