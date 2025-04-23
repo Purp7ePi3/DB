@@ -183,7 +183,7 @@ include __DIR__ . '/partials/header.php';
                         <a href="listing.php?id=<?php echo $card["id"]; ?>">
                             <div class="card-image">
                                 <?php if (isset($card["image_url"]) && !empty($card["image_url"])): ?>
-                                    <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"] ?? 'Card'); ?>" loading="lazy">
+                                    <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"] ?? 'Card'); ?>">
                                 <?php else: ?>
                                     <div class="no-image">Immagine non disponibile</div>
                                 <?php endif; ?>
