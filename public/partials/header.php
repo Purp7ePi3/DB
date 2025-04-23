@@ -30,8 +30,8 @@ $base_url = isset($base_path) ? $base_path : '';
                     </a>
                 </div>
                 <div class="search-bar">
-                    <form action="search.php" method="GET">
-                        <input type="text" name="query" placeholder="Cerca carte...">
+                    <form action="<?php echo BASE_URL; ?>/public/marketplace.php" method="GET">
+                        <input type="text" name="search" placeholder="Cerca carte...">
                         <button type="submit"><i class="fas fa-search"></i></button>
                     </form>
                 </div>
