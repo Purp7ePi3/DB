@@ -52,12 +52,6 @@ include 'partials/header.php';
         
         if ($result_games->num_rows > 0) {
             while($game = $result_games->fetch_assoc()) {
-                // Percorsi per i due possibili formati di immagine
-                $svg_path = "assets/images/" . $game["name"] . "-logo.svg";
-                $png_path = "assets/images/" . $game["name"] . "-logo.png";
-                
-                $image_path = file_exists($svg_path) ? $svg_path : $png_path;
-
                 echo '<a href="game.php?id=' . $game["id"] . '" class="game-card">';
                 echo '<div class="game-logo">';
                 echo '<img src="' . $image_path . '" alt="' . htmlspecialchars($game["display_name"]) . '">';
