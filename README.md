@@ -1,9 +1,9 @@
 # Card Collector Center - CCC
 # WebApp per la compravendita di carte collezionabili
-Benvenuti su **CardHub**, un'applicazione web pensata per la compravendita di carte collezionabili, ispirata a piattaforme come *Card Market*.  
+Benvenuti su **CardCollectorCenter - CCC**, un'applicazione web pensata per la compravendita di carte collezionabili, ispirata a piattaforme come *Card Market*.  
 Il progetto è incentrato sulla realizzazione di un'infrastruttura completa, sicura e intuitiva per venditori e collezionisti.
 
-![Homepage](https://raw.githubusercontent.com/Purp7ePi3/Database/immaginireadme/home.png)
+![Homepage](https://github.com/Purp7ePi3/Database/blob/immaginireadme/Immagini/home.png?raw=true)
 
 ![Random Cards](Immagini/random_cards.png)
 ![In Evidenza](Immagini/in_evidenza.png)
