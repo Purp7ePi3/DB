@@ -4,15 +4,14 @@ Benvenuti su **CardCollectorCenter - CCC**, un'applicazione web pensata per la c
 Il progetto è incentrato sulla realizzazione di un'infrastruttura completa, sicura e intuitiva per venditori e collezionisti.
 
 ![Homepage](https://github.com/Purp7ePi3/Database/blob/immaginireadme/Immagini/home.png?raw=true)
-
-![Random Cards](Immagini/random_cards.png)
-![In Evidenza](Immagini/in_evidenza.png)
-![Footer](Immagini/footer.png)
+![In Evidenza](https://github.com/Purp7ePi3/Database/blob/immaginireadme/Immagini/in_evidenza.png?raw=true)
 
 ## 🎯 Obbiettivi principali
 - Consentire agli utenti di **acquistare e vendere carte** in modo semplice e sicuro.
 - Fornire una **gestione completa degli annunci**, profili, wishlist, ordini e spedizioni.
 - Offrire **strumenti avanzati per gli amministratori** per la moderazione e il controllo della piattaforma.
+
+![Le Mie Carte](https://github.com/Purp7ePi3/Database/blob/immaginireadme/Immagini/le_mie_carte.png?raw=true)
 
 ## 🗃️ Caratteristiche principali
 - 🔍 **Motore di ricerca carte** con filtri per edizione, rarità, condizione e prezzo  
@@ -22,9 +21,7 @@ Il progetto è incentrato sulla realizzazione di un'infrastruttura completa, sic
 - 🌟 **Sistema di valutazione dei venditori**
 - 📊 **Dashboard amministrativa** per monitoraggio, gestione contenuti e reportistica
 
-  ![Ricerca Pikachu](Immagini/ricerca_pikachu.png)
-  ![Lista Giochi](Immagini/giochi.png)
-
+  ![Ricerca Pikachu](https://github.com/Purp7ePi3/Database/blob/immaginireadme/Immagini/ricerca_pikachu.png?raw=true)
 
 ## 🧱 Tecnologie utilizzate
 
@@ -38,7 +35,9 @@ Il progetto è incentrato sulla realizzazione di un'infrastruttura completa, sic
 - **Amministratore**: modera utenti e annunci, genera report e statistiche
 
 ## 📫 Contatti
-Se avete domande o feedback non contattateci, siamo degli antipatici, soprattutto Simone.
+Se avete domande o feedback non contattateci, siamo degli antipatici, soprattutto **Simone**.
+
+![Footer](https://github.com/Purp7ePi3/Database/blob/immaginireadme/Immagini/footer.png?raw=true)
 ---
 ## 📝 TODO:
 - "# DB_Solo" (?)
