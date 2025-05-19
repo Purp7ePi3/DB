@@ -3,7 +3,8 @@
 Benvenuti su **CardHub**, un'applicazione web pensata per la compravendita di carte collezionabili, ispirata a piattaforme come *Card Market*.  
 Il progetto è incentrato sulla realizzazione di un'infrastruttura completa, sicura e intuitiva per venditori e collezionisti.
 
-![Homepage](Immagini/home.png)
+![Homepage](https://raw.githubusercontent.com/Purp7ePi3/Database/immaginireadme/home.png)
+
 ![Random Cards](Immagini/random_cards.png)
 ![In Evidenza](Immagini/in_evidenza.png)
 ![Footer](Immagini/footer.png)
