@@ -30,7 +30,11 @@ Il progetto è incentrato sulla realizzazione di un'infrastruttura completa, sic
 
 ## 📫 Contatti
 Se avete domande o feedback non contattateci, siamo degli antipatici, soprattutto Simone.
-
+---
+## 📝 TODO:
+- "# DB_Solo" (?)
+- mettere le immagini per la prima pagina
+- la funzione per aggiungere le carte
 ---
 # Come far andare il sito
 ## 1. Installa XAMPP
@@ -61,15 +65,3 @@ XAMPP va aperto sempre come amministratore.
 Bisogna sempre fare STOP ai processi prima di premere QUIT per chiudere, se non si fa si rompe tutto e dovrete disinstallare e reinstallare per farlo funzionare.
 Ho scritto questa guida per gli impediti come me.
 ---
-
-"# DB_Solo" 
-il css fa particolamerente schifo,
-# mettere le immagini per la prima pagina, 
-# creare la whislist, 
-# la funzione per aggiungere le carte
-manca altra rova ma non mi viene in mente, sono stanco
-/*Guida per venditori
-FAQ
-Contatti
-*/
-sono messi solo per bellezza, non fanno niente
