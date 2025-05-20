@@ -1,6 +1,7 @@
 ## 📝 TODO:
 - Rivedere gestione pagamenti
 - Far si che ci sia solo una carta per annuncio (sennò sballa tutto)
+- Rivedere metodi di pagamento, e magari salvare le carte di credito dell'utente
 - "# DB_Solo" (?)
 - la funzione per aggiungere le carte
 ---
