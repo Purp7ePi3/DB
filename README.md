@@ -1,3 +1,9 @@
+## 📝 TODO:
+- Rivedere gestione pagamenti
+- Far si che ci sia solo una carta per annuncio (sennò sballa tutto)
+- "# DB_Solo" (?)
+- la funzione per aggiungere le carte
+---
 # Card Collector Center - CCC
 # WebApp per la compravendita di carte collezionabili
 Benvenuti su **CardCollectorCenter - CCC**, un'applicazione web pensata per la compravendita di carte collezionabili, ispirata a piattaforme come *Card Market*.  
@@ -39,11 +45,6 @@ Se avete domande o feedback non contattateci, siamo degli antipatici, soprattutt
 
 ![Footer](https://github.com/Purp7ePi3/Database/blob/immaginireadme/Immagini/footer.png?raw=true)
 ---
-## 📝 TODO:
-- "# DB_Solo" (?)
-- mettere le immagini per la prima pagina
-- la funzione per aggiungere le carte
----
 # Come far andare il sito
 ## 1. Installa XAMPP
 Scarica e installa [XAMPP](https://www.apachefriends.org/index.html) per il tuo sistema operativo.
@@ -72,4 +73,5 @@ http://localhost/Database
 XAMPP va aperto sempre come amministratore.
 Bisogna sempre fare STOP ai processi prima di premere QUIT per chiudere, se non si fa si rompe tutto e dovrete disinstallare e reinstallare per farlo funzionare.
 Ho scritto questa guida per gli impediti come me.
+
 ---
