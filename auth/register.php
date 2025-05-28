@@ -3,15 +3,20 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+function alert($msg) {
+    echo "<script type='text/javascript'>alert('$msg');</script>";
+}
+
 // If user is already logged in, redirect to home page
 if (isset($_SESSION['user_id'])) {
-    header("Location: index.php");
+    header("Location: /DataBase/public/index.php");
     exit;
 }
 
 $base_url = "/DataBase";
 
-$default_account_type_id = 1; // Id admin
+$default_account_type_id = 2; // Not admin
 
 // Include database configuration
 require_once '../config/config.php';

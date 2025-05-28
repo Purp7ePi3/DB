@@ -37,7 +37,7 @@ include 'partials/header.php';
         <p>Compra e vendi carte di Magic: The Gathering, Pokémon, Yu-Gi-Oh! e molti altri giochi!</p>
         <div class="hero-buttons">
             <a href="marketplace.php" class="btn btn-primary">Esplora il marketplace</a>
-            <a href="register.php" class="btn">Registrati ora</a>
+            <a href="/DataBase/auth/register.php" class="btn">Registrati ora</a>
         </div>
     </div>
 </section>
