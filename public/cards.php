@@ -45,21 +45,27 @@ if ($result_card->num_rows === 0) {
 $card = $result_card->fetch_assoc();
 
 // Fetch all listings for this card
-$sql_listings = "SELECT l.id as listing_id, l.price, l.quantity, l.description, l.created_at,
-                cc.id as condition_id, cc.condition_name,
-                a.id as seller_id, a.username as seller_name,
-                up.rating as seller_rating,
-                sc.name_en as card_name
 
-                FROM listings l
-                JOIN card_conditions cc ON l.condition_id = cc.id
-                JOIN accounts a ON l.seller_id = a.id
-                JOIN user_profiles up ON a.id = up.user_id
-                JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
-
-                WHERE l.single_card_id = ? AND l.is_active = TRUE
-                ORDER BY l.price ASC";
-
+$sql_listings = "SELECT l.id as listing_id,
+                        l.price,
+                        l.quantity,
+                        l.description,
+                        l.created_at,
+                        cc.id as condition_id,
+                        cc.condition_name,
+                        a.id as seller_id,
+                        a.username as seller_name,
+                        up.rating as seller_rating,
+                        sc.name_en as card_name,
+                        sc.blueprint_id as card_id
+                 FROM listings l
+                 JOIN card_conditions cc ON l.condition_id = cc.id
+                 JOIN accounts a ON l.seller_id = a.id
+                 LEFT JOIN user_profiles up ON a.id = up.user_id
+                 JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
+                 WHERE sc.blueprint_id = ? AND l.is_active = TRUE
+                 ORDER BY l.price ASC";
+                 
 $stmt = $conn->prepare($sql_listings);
 $stmt->bind_param("i", $card_id);
 $stmt->execute();
@@ -349,9 +355,71 @@ include __DIR__ . '/partials/header.php';
             <p class="no-listings">Non ci sono annunci disponibili per questa carta.</p>
         <?php endif; ?>
         
-        <?php if ($is_logged_in): ?>
+         <?php if ($is_logged_in): ?>
             <div class="add-listing-section">
                 <h3>Vendi questa carta</h3>
+                
+                <?php
+                // Process form submission
+                if (isset($_POST['add_listing'])) {
+                    // Validate and sanitize input
+                    $price = filter_var($_POST['price'], FILTER_VALIDATE_FLOAT);
+                    $quantity = filter_var($_POST['quantity'], FILTER_VALIDATE_INT);
+                    $condition = filter_var($_POST['condition'], FILTER_VALIDATE_INT);
+                    $description = trim($_POST['description'] ?? '');
+                    
+                    // Basic validation
+                    if ($price === false || $price <= 0) {
+                        $error_msg = "Prezzo non valido.";
+                    } elseif ($quantity === false || $quantity <= 0) {
+                        $error_msg = "Quantità non valida.";
+                    } elseif ($condition === false || $condition <= 0) {
+                        $error_msg = "Condizione non valida.";
+                    } else {
+                        try {
+                            $conn->autocommit(false);
+                            
+                            $sql_insert = "INSERT INTO listing (seller_id, single_card_id, condition_id, price, quantity, description, is_active, created_at, updated_at)
+                                          VALUES (?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())";
+                            
+                            $stmt = $conn->prepare($sql_insert);
+                            
+                            $stmt->bind_param("iiidis", 
+                                $_SESSION['user_id'], 
+                                $card_id,
+                                $condition, 
+                                $price, 
+                                $quantity, 
+                                $description
+                            );
+                            
+                            if ($stmt->execute()) {
+                                $conn->commit();
+                                $success_msg = "Annuncio creato con successo!";
+                                header("Location: " . $_SERVER['PHP_SELF'] . "?card_id=" . $card_id);
+                                exit();
+                            } else {
+                                throw new Exception("Errore nell'esecuzione della query");
+                            }
+                            
+                        } catch (Exception $e) {
+                            $conn->rollback();
+                            $error_msg = "Errore nell'aggiunta dell'annuncio: " . $e->getMessage();
+                        } finally {
+                            $conn->autocommit(true);
+                        }
+                    }
+                }
+                ?>
+                
+                <?php if (isset($error_msg)): ?>
+                    <div class="error-message"><?php echo htmlspecialchars($error_msg); ?></div>
+                <?php endif; ?>
+                
+                <?php if (isset($success_msg)): ?>
+                    <div class="success-message"><?php echo htmlspecialchars($success_msg); ?></div>
+                <?php endif; ?>
+                
                 <form method="POST" action="" class="add-listing-form">
                     <div class="form-group">
                         <label for="price">Prezzo (€):</label>
@@ -383,7 +451,7 @@ include __DIR__ . '/partials/header.php';
                     </div>
                 </form>
             </div>
-        <?php endif; ?>
+        <?php endif; ?> 
     </div>
 </div>
 <style>
