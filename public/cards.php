@@ -45,27 +45,21 @@ if ($result_card->num_rows === 0) {
 $card = $result_card->fetch_assoc();
 
 // Fetch all listings for this card
+$sql_listings = "SELECT l.id as listing_id, l.price, l.quantity, l.description, l.created_at,
+                cc.id as condition_id, cc.condition_name,
+                a.id as seller_id, a.username as seller_name,
+                up.rating as seller_rating,
+                sc.name_en as card_name
 
-$sql_listings = "SELECT l.id as listing_id,
-                        l.price,
-                        l.quantity,
-                        l.description,
-                        l.created_at,
-                        cc.id as condition_id,
-                        cc.condition_name,
-                        a.id as seller_id,
-                        a.username as seller_name,
-                        up.rating as seller_rating,
-                        sc.name_en as card_name,
-                        sc.blueprint_id as card_id
-                 FROM listings l
-                 JOIN card_conditions cc ON l.condition_id = cc.id
-                 JOIN accounts a ON l.seller_id = a.id
-                 LEFT JOIN user_profiles up ON a.id = up.user_id
-                 JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
-                 WHERE sc.blueprint_id = ? AND l.is_active = TRUE
-                 ORDER BY l.price ASC";
-                 
+                FROM listings l
+                JOIN card_conditions cc ON l.condition_id = cc.id
+                JOIN accounts a ON l.seller_id = a.id
+                LEFT JOIN user_profiles up ON a.id = up.user_id
+                JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
+
+                WHERE l.single_card_id = ? AND l.is_active = TRUE
+                ORDER BY l.price ASC";
+
 $stmt = $conn->prepare($sql_listings);
 $stmt->bind_param("i", $card_id);
 $stmt->execute();
