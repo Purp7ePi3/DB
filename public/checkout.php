@@ -21,6 +21,8 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $success_message = '';
 $error_message = '';
+$order_id = null;
+$payment_method = null;
 
 // Get cart items
 $sql = "SELECT ci.id as cart_item_id, ci.quantity, l.id as listing_id, l.price, l.quantity as available_quantity,
@@ -38,9 +40,13 @@ $sql = "SELECT ci.id as cart_item_id, ci.quantity, l.id as listing_id, l.price, 
         ORDER BY c.updated_at DESC";
 
 $stmt = $conn->prepare($sql);
+if (!$stmt) {
+    die("Errore nella prepare() della SELECT carrello: " . $conn->error);
+}
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
+
 
 // Calculate totals
 $total = 0;
@@ -75,36 +81,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_order'])) {
         $postal_code = trim($_POST['postal_code']);
         $country = trim($_POST['country']);
         $phone = trim($_POST['phone']);
+        $payment_method_id = isset($_POST['payment_method']) ? intval($_POST['payment_method']) : 0;
         
         // Validate required fields
-        if (empty($first_name) || empty($last_name) || empty($address) || empty($city) || empty($postal_code)) {
-            $error_message = "Tutti i campi obbligatori devono essere compilati.";
+        if (
+            empty($first_name) || empty($last_name) || empty($address) ||
+            empty($city) || empty($postal_code) || empty($payment_method_id)
+        ) {
+            $error_message = "Tutti i campi obbligatori devono essere compilati, incluso il metodo di pagamento.";
         } else {
             try {
                 $conn->autocommit(false);
                 
                 // Create order
-                $sql_order = "INSERT INTO orders (buyer_id, total_price, status, order_date, 
-                             shipping_first_name, shipping_last_name, shipping_address, 
-                             shipping_city, shipping_postal_code, shipping_country, shipping_phone) 
-                             VALUES (?, ?, 'PENDING', NOW(), ?, ?, ?, ?, ?, ?, ?)";
-                
+                $sql_order = "INSERT INTO orders (buyer_id, payment_id, total_price, status, order_date) 
+                              VALUES (?, ?, ?, 'PENDING', NOW())";
                 $stmt = $conn->prepare($sql_order);
-                $stmt->bind_param("idsssssss", $user_id, $total, $first_name, $last_name, 
-                                $address, $city, $postal_code, $country, $phone);
-                
+                if (!$stmt) {
+                    die("Errore nella preparazione della query: " . $conn->error);
+                }
+                $stmt->bind_param("iid", $user_id, $payment_method_id, $total);
                 if (!$stmt->execute()) {
                     throw new Exception("Errore nella creazione dell'ordine");
                 }
-                
                 $order_id = $conn->insert_id;
                 
                 // Create order items
                 foreach ($cart_items as $item) {
-                    $sql_item = "INSERT INTO order_items (order_id, listing_id, quantity, price_per_item) 
-                                VALUES (?, ?, ?, ?)";
+                    $sql_item = "INSERT INTO order_items (order_id, listing_id, seller_id, quantity, unit_price) 
+                                 VALUES (?, ?, ?, ?, ?)";
                     $stmt = $conn->prepare($sql_item);
-                    $stmt->bind_param("iiid", $order_id, $item['listing_id'], $item['quantity'], $item['price']);
+                    if (!$stmt) {
+                        die("Errore nella preparazione della query order_items: " . $conn->error . "<br>SQL: " . $sql_item);
+                    }
+                    $stmt->bind_param(
+                        "iiiid",
+                        $order_id,
+                        $item['listing_id'],
+                        $item['seller_id'],
+                        $item['quantity'],
+                        $item['price']
+                    );
                     
                     if (!$stmt->execute()) {
                         throw new Exception("Errore nell'aggiunta degli articoli all'ordine");
@@ -150,6 +167,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_order'])) {
                 $conn->autocommit(true);
             }
         }
+    }
+}
+
+// Get payment methods
+$payment_methods = [];
+$sql_payments = "SELECT id, method_name FROM payment_methods";
+$result_payments = $conn->query($sql_payments);
+if ($result_payments && $result_payments->num_rows > 0) {
+    while ($row = $result_payments->fetch_assoc()) {
+        $payment_methods[] = $row;
     }
 }
 
@@ -253,6 +280,44 @@ include __DIR__ . '/partials/header.php';
                         </div>
                     </div>
                 </div>
+                
+                <!-- Metodo di pagamento -->
+                <div class="form-group">
+                    <label for="payment_method">Metodo di pagamento *</label>
+                    <select id="payment_method" name="payment_method" required>
+                        <option value="">Seleziona metodo</option>
+                        <?php foreach ($payment_methods as $pm): ?>
+                            <option value="<?php echo $pm['id']; ?>" <?php echo (($_POST['payment_method'] ?? '') == $pm['id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($pm['method_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <!-- Campi finti per la carta di credito -->
+                <div id="credit-card-fields" style="display:none;">
+                    <div class="form-group">
+                        <label for="cc_number">Numero carta</label>
+                        <input type="text" id="cc_number" name="cc_number" maxlength="19" placeholder="1234 5678 9012 3456">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cc_expiry">Scadenza</label>
+                            <input type="text" id="cc_expiry" name="cc_expiry" maxlength="5" placeholder="MM/AA">
+                        </div>
+                        <div class="form-group">
+                            <label for="cc_cvc">CVC</label>
+                            <input type="text" id="cc_cvc" name="cc_cvc" maxlength="4" placeholder="123">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="bank-transfer-fields" style="display:none;">
+                    <div class="form-group">
+                        <label for="iban">IBAN</label>
+                        <input type="text" id="iban" name="iban" maxlength="34" placeholder="IT60X0542811101000000123456">
+                    </div>
+                </div>
             </div>
             
             <div class="checkout-actions">
@@ -260,6 +325,13 @@ include __DIR__ . '/partials/header.php';
                 <button type="submit" name="complete_order" class="btn-primary">Completa ordine</button>
             </div>
         </form>
+    <?php endif; ?>
+    
+    <?php if ($order_id): ?>
+        <p>Il tuo numero d'ordine è <strong>#<?php echo htmlspecialchars($order_id); ?></strong>.</p>
+        <?php if ($payment_method): ?>
+            <p>Metodo di pagamento scelto: <strong><?php echo htmlspecialchars($payment_method); ?></strong></p>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 
@@ -426,6 +498,30 @@ include __DIR__ . '/partials/header.php';
     }
 }
 </style>
+
+<script>
+function togglePaymentFields() {
+    var ccFields = document.getElementById('credit-card-fields');
+    var bankFields = document.getElementById('bank-transfer-fields');
+    var paymentSelect = document.getElementById('payment_method');
+    var selected = paymentSelect.options[paymentSelect.selectedIndex].text.toLowerCase();
+    if (selected.includes('carta') || selected.includes('credit')) {
+        ccFields.style.display = '';
+        if (bankFields) bankFields.style.display = 'none';
+    } else if (selected.includes('bank') || selected.includes('bonifico')) {
+        ccFields.style.display = 'none';
+        if (bankFields) bankFields.style.display = '';
+    } else {
+        ccFields.style.display = 'none';
+        if (bankFields) bankFields.style.display = 'none';
+    }
+}
+
+// Mostra/nasconde i campi al cambio select
+document.getElementById('payment_method').addEventListener('change', togglePaymentFields);
+// Mostra/nasconde i campi al caricamento pagina
+window.addEventListener('DOMContentLoaded', togglePaymentFields);
+</script>
 
 <?php
 // Include footer
