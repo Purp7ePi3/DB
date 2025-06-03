@@ -4,528 +4,235 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-header("Cache-Control: no-cache, no-store, must-revalidate");
-header("Pragma: no-cache");
-header("Expires: 0");
+$root_path = $_SERVER['DOCUMENT_ROOT'];
+$base_url = "/DataBase";
 
 // Include database configuration
 require_once '../config/config.php';
-$base_url = "/DataBase";
 
-// Check if card ID is provided
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header("Location: $base_url/public/marketplace.php");
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    // Store current URL to redirect back after login
+    $_SESSION['redirect_url'] = 'cart.php';
+    header("Location: $base_url/public/index.php");
     exit;
 }
 
-$card_id = (int)$_GET['id'];
+$user_id = $_SESSION['user_id'];
+$success_message = '';
+$error_message = '';
 
-// Fetch card details with rarity name
-$sql_card = "SELECT sc.blueprint_id, sc.name_en, sc.image_url, sc.collector_number, 
-             r.id as rarity_id, r.rarity_name, r.description as rarity_description,
-             sc.expansion_id,
-             e.id as expansion_id, e.name as expansion_name,
-             g.id as game_id, g.display_name as game_name
-             FROM single_cards sc
-             JOIN expansions e ON sc.expansion_id = e.id
-             JOIN games g ON e.game_id = g.id
-             LEFT JOIN card_rarities r ON sc.rarity_id = r.id
-             WHERE sc.blueprint_id = ?";
+// Handle quantity updates
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_cart'])) {
+    foreach ($_POST['quantity'] as $cart_item_id => $quantity) {
+        if ($quantity <= 0) {
+            // Remove item if quantity is zero or negative
+            $sql_delete = "DELETE FROM cart_items WHERE id = ? AND cart_id IN (SELECT id FROM carts WHERE user_id = ?)";
+            $stmt = $conn->prepare($sql_delete);
+            $stmt->bind_param("ii", $cart_item_id, $user_id);
+            $stmt->execute();
+        } else {
+            // Update quantity
+            $sql_update = "UPDATE cart_items SET quantity = ? WHERE id = ? AND cart_id IN (SELECT id FROM carts WHERE user_id = ?)";
+            $stmt = $conn->prepare($sql_update);
+            $stmt->bind_param("iii", $quantity, $cart_item_id, $user_id);
+            $stmt->execute();
+        }
+    }
+    $success_message = 'Carrello aggiornato con successo';
+}
 
-$stmt = $conn->prepare($sql_card);
-$stmt->bind_param("i", $card_id);
+// Handle remove item
+if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
+    $cart_item_id = (int)$_GET['remove'];
+    $sql_delete = "DELETE FROM cart_items WHERE id = ? AND cart_id IN (SELECT id FROM carts WHERE user_id = ?)";
+    $stmt = $conn->prepare($sql_delete);
+    $stmt->bind_param("ii", $cart_item_id, $user_id);
+    
+    if ($stmt->execute()) {
+        $success_message = 'Articolo rimosso dal carrello';
+    } else {
+        $error_message = 'Errore nella rimozione dell\'articolo: ' . $conn->error;
+    }
+}
+
+// Get cart items
+$sql = "SELECT ci.id as cart_item_id, ci.quantity, l.id as listing_id, l.price, l.quantity as available_quantity,
+        sc.name_en, sc.image_url, e.name as expansion_name, g.display_name as game_name,
+        cc.condition_name, u.username as seller_name, COALESCE(up.rating, 0) as seller_rating
+        FROM cart_items ci
+        JOIN carts c ON ci.cart_id = c.id
+        JOIN listings l ON ci.listing_id = l.id
+        JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
+        JOIN expansions e ON sc.expansion_id = e.id
+        JOIN games g ON e.game_id = g.id
+        JOIN card_conditions cc ON l.condition_id = cc.id
+        JOIN accounts u ON l.seller_id = u.id
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE c.user_id = ? AND l.is_active = TRUE
+        ORDER BY c.updated_at DESC";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $user_id);
 $stmt->execute();
-$result_card = $stmt->get_result();
+$result = $stmt->get_result();
 
+// Calculate totals and check for unavailable items
 $total = 0;
 $items_count = 0;
 $unavailable_items = [];
-$cart_items = [];
+$cart_items = []; // Initialize here, outside the if statement
 
-if ($result_card->num_rows === 0) {
-    header("Location: $base_url/public/marketplace.php");
-    exit;
-}
-
-$card = $result_card->fetch_assoc();
-
-// Check if user is logged in
-$is_logged_in = isset($_SESSION['user_id']);
-$user_id = $is_logged_in ? $_SESSION['user_id'] : 0;
-
-// Check if the user has this card in their wishlist
-$in_wishlist = false;
-if ($is_logged_in) {
-    $sql_wishlist = "SELECT COUNT(*) as count FROM wishlist_items wi
-                 JOIN wishlists w ON wi.wishlist_id = w.id
-                 WHERE w.user_id = ? AND wi.single_card_id = ?";
-    $stmt = $conn->prepare($sql_wishlist);
-    $stmt->bind_param("ii", $user_id, $card_id);
-    $stmt->execute();
-    $wishlist_result = $stmt->get_result();
-    $in_wishlist = ($wishlist_result->fetch_assoc()['count'] > 0);
-}
-
-// Handle wishlist operations
-$wishlist_message = '';
-if ($is_logged_in && isset($_POST['wishlist_action'])) {
-    if ($_POST['wishlist_action'] === 'add') {
-        // First check if user already has a wishlist
-        $sql_get_wishlist = "SELECT id FROM wishlists WHERE user_id = ?";
-        $stmt = $conn->prepare($sql_get_wishlist);
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $wishlist_result = $stmt->get_result();
-        
-        if ($wishlist_result->num_rows === 0) {
-            // Create a new wishlist for the user
-            $sql_create_wishlist = "INSERT INTO wishlists (user_id, name, created_at) VALUES (?, 'My Wishlist', NOW())";
-            $stmt = $conn->prepare($sql_create_wishlist);
-            $stmt->bind_param("i", $user_id);
-            $stmt->execute();
-            $wishlist_id = $conn->insert_id;
-        } else {
-            $wishlist_id = $wishlist_result->fetch_assoc()['id'];
-        }
-        
-        // Add card to wishlist if not already there
-        if (!$in_wishlist) {
-            $sql_add_to_wishlist = "INSERT INTO wishlist_items (wishlist_id, single_card_id, desired_condition_id) 
-                            VALUES (?, ?, NULL)";
-            $stmt = $conn->prepare($sql_add_to_wishlist);
-            $stmt->bind_param("ii", $wishlist_id, $card_id);
+if ($result->num_rows > 0) {
+    while ($item = $result->fetch_assoc()) {
+        // Check if requested quantity is still available
+        if ($item['quantity'] > $item['available_quantity']) {
+            $unavailable_items[] = $item['name_en'];
+            $item['quantity'] = $item['available_quantity']; // Adjust quantity to what's available
             
-            if ($stmt->execute()) {
-                $wishlist_message = "La carta è stata aggiunta alla tua wishlist.";
-                $in_wishlist = true;
-            } else {
-                $wishlist_message = "Errore durante l'aggiunta alla wishlist.";
-            }
+            // Update cart quantity in database
+            $sql_update = "UPDATE cart_items SET quantity = ? WHERE id = ?";
+            $stmt = $conn->prepare($sql_update);
+            $stmt->bind_param("ii", $item['available_quantity'], $item['cart_item_id']);
+            $stmt->execute();
         }
-    } elseif ($_POST['wishlist_action'] === 'remove') {
-        $sql_remove = "DELETE wi FROM wishlist_items wi
-                  JOIN wishlists w ON wi.wishlist_id = w.id
-                  WHERE w.user_id = ? AND wi.single_card_id = ?";
-        $stmt = $conn->prepare($sql_remove);
-        $stmt->bind_param("ii", $user_id, $card_id);
         
-        if ($stmt->execute()) {
-            $wishlist_message = "La carta è stata rimossa dalla tua wishlist.";
-            $in_wishlist = false;
-        } else {
-            $wishlist_message = "Errore durante la rimozione dalla wishlist.";
-        }
-    }
-}
-
-// Handle listing operations
-$listing_message = '';
-
-// Handle adding a new listing
-if ($is_logged_in && isset($_POST['add_listing'])) {
-    $price = (float)$_POST['price'];
-    $quantity = (int)$_POST['quantity'];
-    $condition_id = (int)$_POST['condition'];
-    $description = trim($_POST['description']);
-    
-    // Validate inputs
-    if ($price <= 0 || $quantity <= 0 || $condition_id <= 0) {
-        $listing_message = "Errore: Verifica i dati inseriti.";
-    } else {
-        $sql_add_listing = "INSERT INTO listings (seller_id, single_card_id, condition_id, price, quantity, description, is_active, created_at) 
-                   VALUES (?, ?, ?, ?, ?, ?, TRUE, NOW())";
-        $stmt = $conn->prepare($sql_add_listing);
-        $stmt->bind_param("iiidis", $user_id, $card_id, $condition_id, $price, $quantity, $description);
+        // Add to cart items array
+        $cart_items[] = $item;
         
-        if ($stmt->execute()) {
-            $listing_message = "Annuncio creato con successo.";
-        } else {
-            $listing_message = "Errore durante la creazione dell'annuncio: " . $conn->error;
-        }
+        // Add to totals
+        $item_total = $item['price'] * $item['quantity'];
+        $total += $item_total;
+        $items_count += $item['quantity'];
     }
-}
-
-// Handle removing a listing
-if ($is_logged_in && isset($_POST['remove_listing'])) {
-    $listing_id = (int)$_POST['listing_id'];
-    
-    // Verify the listing belongs to the user
-    $sql_check = "SELECT id FROM listings WHERE id = ? AND seller_id = ?";
-    $stmt = $conn->prepare($sql_check);
-    $stmt->bind_param("ii", $listing_id, $user_id);
-    $stmt->execute();
-    
-    if ($stmt->get_result()->num_rows > 0) {
-        $sql_remove = "UPDATE listings SET is_active = FALSE WHERE id = ?";
-        $stmt = $conn->prepare($sql_remove);
-        $stmt->bind_param("i", $listing_id);
-        
-        if ($stmt->execute()) {
-            $listing_message = "Annuncio rimosso con successo.";
-        } else {
-            $listing_message = "Errore durante la rimozione dell'annuncio.";
-        }
-    } else {
-        $listing_message = "Non hai i permessi per rimuovere questo annuncio.";
-    }
-}
-
-// Fetch all listings for this card (refresh after any operations)
-$sql_listings = "SELECT l.id as listing_id, l.price, l.quantity, l.description, l.created_at,
-                cc.id as condition_id, cc.condition_name,
-                a.id as seller_id, a.username as seller_name,
-                COALESCE(up.rating, 0) as seller_rating,
-                sc.name_en as card_name
-                FROM listings l
-                JOIN card_conditions cc ON l.condition_id = cc.id
-                JOIN accounts a ON l.seller_id = a.id
-                LEFT JOIN user_profiles up ON a.id = up.user_id
-                JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
-                WHERE l.single_card_id = ? AND l.is_active = TRUE
-                ORDER BY l.price ASC";
-
-$stmt = $conn->prepare($sql_listings);
-$stmt->bind_param("i", $card_id);
-$stmt->execute();
-$result_listings = $stmt->get_result();
-
-// Get card conditions for the add listing form
-$sql_conditions = "SELECT id, condition_name FROM card_conditions ORDER BY id";
-$result_conditions = $conn->query($sql_conditions);
-$conditions = [];
-while ($condition = $result_conditions->fetch_assoc()) {
-    $conditions[] = $condition;
 }
 
 // Include header
-include __DIR__ . '/partials/header.php';
+include_once $root_path . $base_url . '/public/partials/header.php';
+
 ?>
+<link rel="stylesheet" href="<?php echo $base_url; ?>/css/cart.css">
 
-<link rel="stylesheet" href="<?php echo $base_url; ?>/css/cards.css">
-
-<div class="card-details-container">
-    <div class="card-details">
-        <div class="card-image-container">
-            <?php if ($card["image_url"]): ?>
-                <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
-            <?php else: ?>
-                <div class="no-image">Immagine non disponibile</div>
-            <?php endif; ?>
-            
-            <?php if ($is_logged_in): ?>
-                <div class="card-actions">
-                    <form method="POST" action="">
-                        <?php if ($in_wishlist): ?>
-                            <input type="hidden" name="wishlist_action" value="remove">
-                            <button type="submit" class="btn-wishlist active">
-                                <i class="fas fa-heart"></i> Rimuovi dalla wishlist
-                            </button>
-                        <?php else: ?>
-                            <input type="hidden" name="wishlist_action" value="add">
-                            <button type="submit" class="btn-wishlist">
-                                <i class="far fa-heart"></i> Aggiungi alla wishlist
-                            </button>
-                        <?php endif; ?>
-                    </form>
-                </div>
-            <?php endif; ?>
-        </div>
-        
-        <div class="card-info">
-            <h1><?php echo htmlspecialchars($card["name_en"]); ?></h1>
-            
-            <div class="card-meta">
-                <div class="meta-row">
-                    <span class="meta-label">Gioco:</span>
-                    <span class="meta-value">
-                        <a href="game.php?id=<?php echo $card["game_id"]; ?>"><?php echo htmlspecialchars($card["game_name"]); ?></a>
-                    </span>
-                </div>
-                
-                <div class="meta-row">
-                    <span class="meta-label">Espansione:</span>
-                    <span class="meta-value">
-                        <a href="expansion.php?id=<?php echo $card["expansion_id"]; ?>"><?php echo htmlspecialchars($card["expansion_name"]); ?></a>
-                    </span>
-                </div>
-                
-                <?php if (!empty($card["collector_number"])): ?>
-                <div class="meta-row">
-                    <span class="meta-label">Numero collezione:</span>
-                    <span class="meta-value"><?php echo htmlspecialchars($card["collector_number"]); ?></span>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($card["rarity_name"])): ?>
-                <div class="meta-row">
-                    <span class="meta-label">Rarità:</span>
-                    <span class="meta-value"><?php echo htmlspecialchars($card["rarity_name"]); ?></span>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
+<div class="cart-container">
+    <h1>Il tuo carrello</h1>
     
-    <?php if (!empty($wishlist_message)): ?>
-    <div class="alert alert-info">
-        <?php echo htmlspecialchars($wishlist_message); ?>
-    </div>
+    <?php if (!empty($error_message)): ?>
+        <div class="alert alert-danger">
+            <?php echo htmlspecialchars($error_message); ?>
+        </div>
     <?php endif; ?>
     
-    <?php if (!empty($listing_message)): ?>
-    <div class="alert alert-info">
-        <?php echo htmlspecialchars($listing_message); ?>
-    </div>
+    <?php if (!empty($success_message)): ?>
+        <div class="alert alert-success">
+            <?php echo htmlspecialchars($success_message); ?>
+        </div>
     <?php endif; ?>
     
-    <div class="listings-section">
-        <h2>Annunci disponibili</h2>
-        
-        <?php if ($result_listings->num_rows > 0): ?>
-            <div class="listings-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Venditore</th>
-                            <th>Nome Carta</th>
-                            <th>Condizione</th>
-                            <th>Prezzo</th>
-                            <th>Disponibilità</th>
-                            <th>Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while ($listing = $result_listings->fetch_assoc()): ?>
-                            <tr>
-                                <td class="seller-info">
-                                    <a href="seller.php?id=<?php echo $listing['seller_id']; ?>">
-                                        <?php echo htmlspecialchars($listing['seller_name']); ?>
-                                    </a>
-                                    <div class="seller-rating">
+    <?php if (!empty($unavailable_items)): ?>
+        <div class="alert alert-warning">
+            Alcuni articoli non sono più disponibili nella quantità richiesta. Il carrello è stato aggiornato.
+        </div>
+    <?php endif; ?>
+    
+    <?php if (count($cart_items) > 0): ?>
+        <form action="cart.php" method="POST">
+            <div class="cart-content">
+                <div class="cart-items">
+                    <?php foreach ($cart_items as $item): ?>
+                        <div class="cart-item">
+                            <div class="item-image">
+                                <a href="cards.php?id=<?php echo $item['listing_id']; ?>">
+                                    <?php if ($item['image_url']): ?>
+                                        <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name_en']); ?>">
+                                    <?php else: ?>
+                                        <div class="no-image">Immagine non disponibile</div>
+                                    <?php endif; ?>
+                                </a>
+                            </div>
+                            
+                            <div class="item-details">
+                                <h3><a href="cards.php?id=<?php echo $item['listing_id']; ?>"><?php echo htmlspecialchars($item['name_en']); ?></a></h3>
+                                <p class="item-meta">
+                                    <?php echo htmlspecialchars($item['expansion_name']); ?> (<?php echo htmlspecialchars($item['game_name']); ?>)<br>
+                                    Condizione: <?php echo htmlspecialchars($item['condition_name']); ?><br>
+                                    Venditore: <?php echo htmlspecialchars($item['seller_name']); ?>
+                                    <span class="rating">
                                         <?php 
-                                        $rating = (float)$listing['seller_rating'];
+                                        $rating = (float)$item['seller_rating'];
                                         echo str_repeat('★', round($rating)) . str_repeat('☆', 5 - round($rating)); 
                                         ?>
-                                        <span><?php echo number_format($rating, 1); ?></span>
-                                    </div>
-                                </td>
-                                <td><?php echo htmlspecialchars($listing['card_name']); ?></td>
-                                <td><?php echo htmlspecialchars($listing['condition_name']); ?></td>
-                                <td class="price"><?php echo number_format($listing['price'], 2, ',', '.'); ?> €</td>
-                                <td><?php echo $listing['quantity']; ?></td>
-                                <td class="action">
-                                    <?php if ($listing['seller_id'] == $user_id): ?>
-                                        <form method="POST" action="" style="display: inline;">
-                                            <input type="hidden" name="listing_id" value="<?php echo $listing['listing_id']; ?>">
-                                            <button type="submit" name="remove_listing" class="btn-remove" 
-                                                   onclick="return confirm('Sei sicuro di voler rimuovere questo annuncio?');">
-                                                <i class="fas fa-trash"></i> Rimuovi
-                                            </button>
-                                        </form>
-                                    <?php else: ?>
-                                        <form method="POST" action="add_to_cart.php" style="display: inline;">
-                                            <input type="hidden" name="listing_id" value="<?php echo $listing['listing_id']; ?>">
-                                            <button type="submit" class="btn-add-cart">
-                                                <i class="fas fa-cart-plus"></i> Aggiungi al carrello
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php if (!empty($listing['description'])): ?>
-                                <tr class="description-row">
-                                    <td colspan="6">
-                                        <div class="listing-description">
-                                            <strong>Descrizione:</strong> <?php echo nl2br(htmlspecialchars($listing['description'])); ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php else: ?>
-            <p class="no-listings">Non ci sono annunci disponibili per questa carta.</p>
-        <?php endif; ?>
-        
-        <?php if ($is_logged_in): ?>
-            <div class="add-listing-section">
-                <h3>Vendi questa carta</h3>
+                                    </span>
+                                </p>
+                            </div>
+                            
+                            <div class="item-quantity">
+                                <label for="quantity-<?php echo $item['cart_item_id']; ?>">Quantità:</label>
+                                <input type="number" id="quantity-<?php echo $item['cart_item_id']; ?>" 
+                                       name="quantity[<?php echo $item['cart_item_id']; ?>]" 
+                                       value="<?php echo $item['quantity']; ?>" 
+                                       min="1" max="<?php echo $item['available_quantity']; ?>">
+                                <div class="available">
+                                    Disponibili: <?php echo $item['available_quantity']; ?>
+                                </div>
+                            </div>
+                            
+                            <div class="item-price">
+                                <div class="price"><?php echo number_format($item['price'], 2, ',', '.'); ?> €</div>
+                                <div class="total">Totale: <?php echo number_format($item['price'] * $item['quantity'], 2, ',', '.'); ?> €</div>
+                            </div>
+                            
+                            <div class="item-actions">
+                                <a href="cart.php?remove=<?php echo $item['cart_item_id']; ?>" class="btn-remove" 
+                                   onclick="return confirm('Sei sicuro di voler rimuovere questo articolo dal carrello?');">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
                 
-                <form method="POST" action="" class="add-listing-form">
-                    <div class="form-group">
-                        <label for="price">Prezzo (€):</label>
-                        <input type="number" id="price" name="price" step="0.01" min="0.01" required>
+                <div class="cart-summary">
+                    <h2>Riepilogo ordine</h2>
+                    <div class="summary-item">
+                        <span>Articoli (<?php echo $items_count; ?>):</span>
+                        <span><?php echo number_format($total, 2, ',', '.'); ?> €</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Spedizione:</span>
+                        <span>Calcolata al checkout</span>
+                    </div>
+                    <div class="summary-total">
+                        <span>Totale:</span>
+                        <span><?php echo number_format($total, 2, ',', '.'); ?> €</span>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="quantity">Quantità:</label>
-                        <input type="number" id="quantity" name="quantity" min="1" value="1" required>
+                    <div class="cart-actions">
+                        <button type="submit" name="update_cart" class="btn-secondary">Aggiorna carrello</button>
+                        <a href="checkout.php" class="btn-primary">Procedi al checkout</a>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="condition">Condizione:</label>
-                        <select id="condition" name="condition" required>
-                            <option value="">Seleziona una condizione</option>
-                            <?php foreach ($conditions as $condition): ?>
-                                <option value="<?php echo $condition['id']; ?>"><?php echo htmlspecialchars($condition['condition_name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                        
-                    <div class="form-group">
-                        <label for="description">Descrizione (opzionale):</label>
-                        <textarea id="description" name="description" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" name="add_listing" class="btn-primary">Crea annuncio</button>
-                    </div>
-                </form>
+                </div>
             </div>
-        <?php endif; ?> 
-    </div>
+        </form>
+    <?php else: ?>
+        <div class="empty-cart">
+            <p>Il tuo carrello è vuoto</p>
+            <a href="marketplace.php" class="btn-primary">Continua lo shopping</a>
+        </div>
+    <?php endif; ?>
 </div>
 
 <style>
-/* Card Details Page Styles */
-.card-details-container {
+.cart-container {
     max-width: 1200px;
     margin: 20px auto;
-    padding: 0 15px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 0 20px;
 }
 
-.card-details {
-    display: flex;
-    flex-wrap: wrap;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
+.cart-container h1 {
     margin-bottom: 30px;
-}
-
-/* Card Image */
-.card-image-container {
-    flex: 0 0 300px;
-    padding: 20px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.card-image-container img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-}
-
-.no-image {
-    width: 100%;
-    height: 400px;
-    background-color: #f5f5f5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    color: #999;
-    font-style: italic;
-}
-
-.card-actions {
-    margin-top: 20px;
-    width: 100%;
-}
-
-.btn-wishlist {
-    width: 100%;
-    padding: 12px;
-    background-color: #f8f9fa;
-    border: 2px solid #dee2e6;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    color: #495057;
-}
-
-.btn-wishlist i {
-    margin-right: 8px;
-    font-size: 16px;
-}
-
-.btn-wishlist:hover {
-    background-color: #e9ecef;
-    border-color: #adb5bd;
-    transform: translateY(-1px);
-}
-
-.btn-wishlist.active {
-    background-color: #dc3545;
-    color: white;
-    border-color: #dc3545;
-}
-
-.btn-wishlist.active:hover {
-    background-color: #c82333;
-    border-color: #bd2130;
-}
-
-/* Card Information */
-.card-info {
-    flex: 1;
-    padding: 25px;
-    min-width: 300px;
-}
-
-.card-info h1 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 24px;
     color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
 }
 
-.card-meta {
-    margin-bottom: 20px;
-}
-
-.meta-row {
-    display: flex;
-    margin-bottom: 10px;
-    line-height: 1.5;
-}
-
-.meta-label {
-    flex: 0 0 150px;
-    font-weight: bold;
-    color: #666;
-}
-
-.meta-value {
-    flex: 1;
-}
-
-.meta-value a {
-    color: #0275d8;
-    text-decoration: none;
-}
-
-.meta-value a:hover {
-    text-decoration: underline;
-}
-
-/* Alerts */
 .alert {
     padding: 15px;
     margin-bottom: 20px;
@@ -533,248 +240,285 @@ include __DIR__ . '/partials/header.php';
     border-radius: 4px;
 }
 
-.alert-info {
-    color: #31708f;
-    background-color: #d9edf7;
-    border-color: #bce8f1;
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
 }
 
-/* Listings Section */
-.listings-section {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    padding: 25px;
-    margin-bottom: 30px;
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
 }
 
-.listings-section h2 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 20px;
-    color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
 }
 
-.listings-table {
-    overflow-x: auto;
+.cart-content {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 30px;
 }
 
-.listings-table table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.listings-table th, .listings-table td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-.listings-table th {
-    background-color: #f8f9fa;
-    color: #555;
-    font-weight: 600;
-}
-
-.seller-info {
+.cart-items {
     display: flex;
     flex-direction: column;
+    gap: 20px;
 }
 
-.seller-info a {
-    color: #0275d8;
+.cart-item {
+    display: grid;
+    grid-template-columns: 100px 1fr 150px 120px 40px;
+    gap: 15px;
+    align-items: center;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.item-image {
+    width: 100px;
+    height: 140px;
+}
+
+.item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.no-image {
+    width: 100%;
+    height: 100%;
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: #999;
+    font-size: 12px;
+    text-align: center;
+}
+
+.item-details h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+}
+
+.item-details h3 a {
+    color: #333;
     text-decoration: none;
-    font-weight: 600;
 }
 
-.seller-rating {
-    margin-top: 5px;
-    color: #f8bb00;
+.item-details h3 a:hover {
+    color: #007bff;
+}
+
+.item-meta {
+    color: #666;
     font-size: 14px;
+    line-height: 1.4;
 }
 
-.seller-rating span {
-    color: #555;
+.rating {
+    color: #f8bb00;
     margin-left: 5px;
 }
 
+.item-quantity label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.item-quantity input {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.available {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+}
+
+.item-price {
+    text-align: right;
+}
+
 .price {
+    font-size: 18px;
     font-weight: 600;
     color: #28a745;
-    font-size: 16px;
+    margin-bottom: 5px;
 }
 
-.action {
-    display: flex;
-    justify-content: flex-start;
-}
-
-.btn-add-cart, .btn-remove {
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    text-decoration: none;
-    border: none;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.btn-add-cart {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-add-cart:hover {
-    background-color: #0069d9;
-    transform: translateY(-1px);
-}
-
-.btn-remove {
-    background-color: #dc3545;
-    color: white;
-}
-
-.btn-remove:hover {
-    background-color: #c82333;
-    transform: translateY(-1px);
-}
-
-.btn-add-cart i, .btn-remove i {
-    margin-right: 6px;
-}
-
-.description-row {
-    background-color: #fafafa;
-}
-
-.listing-description {
-    padding: 10px 15px;
+.total {
     font-size: 14px;
     color: #666;
 }
 
-.no-listings {
-    text-align: center;
-    padding: 40px 20px;
-    color: #777;
-    font-style: italic;
-    background-color: #f8f9fa;
+.btn-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background-color: #dc3545;
+    color: white;
     border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.2s;
 }
 
-/* Add Listing Form */
-.add-listing-section {
-    margin-top: 30px;
-    border-top: 1px solid #eee;
-    padding-top: 20px;
+.btn-remove:hover {
+    background-color: #c82333;
 }
 
-.add-listing-section h3 {
+.cart-summary {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    height: fit-content;
+}
+
+.cart-summary h2 {
     margin-top: 0;
     margin-bottom: 20px;
-    font-size: 18px;
+    font-size: 20px;
     color: #333;
 }
 
-.add-listing-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 16px;
 }
 
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
+.summary-total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+    margin-top: 15px;
+    font-size: 18px;
     font-weight: 600;
-    color: #555;
 }
 
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ddd;
+.cart-actions {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 20px;
+    border: none;
     border-radius: 4px;
-    font-size: 14px;
-    transition: border-color 0.2s ease;
-}
-
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.form-actions {
-    grid-column: 1 / -1;
-    margin-top: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.2s;
 }
 
 .btn-primary {
     background-color: #007bff;
     color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
-    transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
     background-color: #0069d9;
-    transform: translateY(-1px);
 }
 
-/* Responsive Design */
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.empty-cart {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.empty-cart p {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
 @media (max-width: 768px) {
-    .card-image-container {
-        flex: 0 0 100%;
-    }
-    
-    .card-info {
-        padding-top: 0;
-    }
-    
-    .meta-row {
-        flex-direction: column;
-    }
-    
-    .meta-label {
-        margin-bottom: 5px;
-    }
-    
-    .add-listing-form {
+    .cart-content {
         grid-template-columns: 1fr;
     }
     
-    .listings-table {
-        font-size: 14px;
+    .cart-item {
+        grid-template-columns: 80px 1fr;
+        grid-template-rows: auto auto auto auto;
+        gap: 10px;
     }
     
-    .listings-table th, .listings-table td {
-        padding: 8px 10px;
+    .item-image {
+        grid-row: 1 / 3;
+        width: 80px;
+        height: 110px;
+    }
+    
+    .item-details {
+        grid-column: 2;
+    }
+    
+    .item-quantity, .item-price, .item-actions {
+        grid-column: 1 / -1;
+        text-align: left;
     }
 }
 </style>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Aggiorna il totale quando cambia la quantità
+    const quantityInputs = document.querySelectorAll('.item-quantity input');
+    
+    quantityInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Verifica che la quantità non superi il massimo disponibile
+            const max = parseInt(this.getAttribute('max'));
+            if (parseInt(this.value) > max) {
+                this.value = max;
+                alert('La quantità richiesta non è disponibile');
+            }
+            // Impedisce quantità negative
+            if (parseInt(this.value) < 1) {
+                this.value = 1;
+            }
+        });
+    });
+});
+</script>
+
 <?php
 // Include footer
-include __DIR__ . '/partials/footer.php';
+include '../public/partials/footer.php';
 
 // Close database connection
 $conn->close();
