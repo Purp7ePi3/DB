@@ -59,9 +59,9 @@ $result_wishlist = $stmt->get_result();
 
 // Check if user has a wishlist
 if ($result_wishlist->num_rows === 0) {
-    // Create a default wishlist for the user
+    // Create a default wishlist for the user - QUERY CORRETTA senza created_at
     $default_name = "La mia Wishlist";
-    $sql_create = "INSERT INTO wishlists (user_id, name, created_at) VALUES (?, ?, NOW())";
+    $sql_create = "INSERT INTO wishlists (user_id, name) VALUES (?, ?)";
     $stmt = $conn->prepare($sql_create);
     $stmt->bind_param("is", $user_id, $default_name);
     

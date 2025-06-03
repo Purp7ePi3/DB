@@ -41,8 +41,8 @@ try {
     $wishlist_result = $stmt->get_result();
     
     if ($wishlist_result->num_rows === 0) {
-        // Create a default wishlist for the user
-        $sql_create_wishlist = "INSERT INTO wishlists (user_id, name, created_at) VALUES (?, 'My Wishlist', NOW())";
+        // Create a default wishlist for the user - QUERY CORRETTA senza created_at
+        $sql_create_wishlist = "INSERT INTO wishlists (user_id, name) VALUES (?, 'My Wishlist')";
         $stmt = $conn->prepare($sql_create_wishlist);
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
@@ -88,9 +88,8 @@ try {
             exit;
         }
         
-        // Add card to wishlist
-        $sql_insert = "INSERT INTO wishlist_items (wishlist_id, single_card_id, desired_condition_id) 
-                       VALUES (?, ?, NULL)";
+        // Add card to wishlist - QUERY CORRETTA senza desired_condition_id
+        $sql_insert = "INSERT INTO wishlist_items (wishlist_id, single_card_id) VALUES (?, ?)";
         $stmt = $conn->prepare($sql_insert);
         $stmt->bind_param("ii", $wishlist_id, $card_id);
         

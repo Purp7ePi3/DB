@@ -93,8 +93,8 @@ if ($is_logged_in && isset($_POST['add_to_wishlist'])) {
     $wishlist_result = $stmt->get_result();
     
     if ($wishlist_result->num_rows === 0) {
-        // Create a new wishlist for the user
-        $sql_create_wishlist = "INSERT INTO wishlists (user_id, name, created_at) VALUES (?, 'My Wishlist', NOW())";
+        // Create a new wishlist for the user - QUERY CORRETTA senza created_at
+        $sql_create_wishlist = "INSERT INTO wishlists (user_id, name) VALUES (?, 'My Wishlist')";
         $stmt = $conn->prepare($sql_create_wishlist);
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
@@ -104,9 +104,8 @@ if ($is_logged_in && isset($_POST['add_to_wishlist'])) {
     }
     
     // Add card to wishlist if not already there
-    if (!$in_wishlist) {
-        $sql_add_to_wishlist = "INSERT INTO wishlist_items (wishlist_id, single_card_id, desired_condition_id) 
-                        VALUES (?, ?, NULL)";
+  if (!$in_wishlist) {
+        $sql_add_to_wishlist = "INSERT INTO wishlist_items (wishlist_id, single_card_id) VALUES (?, ?)";
         $stmt = $conn->prepare($sql_add_to_wishlist);
         $stmt->bind_param("ii", $wishlist_id, $card_id);
         
@@ -114,7 +113,7 @@ if ($is_logged_in && isset($_POST['add_to_wishlist'])) {
             $wishlist_message = "La carta è stata aggiunta alla tua wishlist.";
             $in_wishlist = true;
         } else {
-            $wishlist_message = "Errore durante l'aggiunta alla wishlist.";
+            $wishlist_message = "Errore durante l'aggiunta alla wishlist: " . $conn->error;
         }
     }
 }
