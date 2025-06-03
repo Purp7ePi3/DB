@@ -321,14 +321,17 @@ include __DIR__ . '/partials/header.php';
                                         <form method="POST" action="">
                                             <input type="hidden" name="listing_id" value="<?php echo $listing['listing_id']; ?>">
                                             <button type="submit" name="remove_listing" class="btn-remove" 
-                                                   onclick="return confirm('Sei sicuro di voler rimuovere questo annuncio?');">
+                                                onclick="return confirm('Sei sicuro di voler rimuovere questo annuncio?');">
                                                 <i class="fas fa-trash"></i> Rimuovi
                                             </button>
                                         </form>
                                     <?php else: ?>
-                                        <a href="add_to_cart.php?listing_id=<?php echo $listing['listing_id']; ?>" class="btn-add-cart">
-                                            <i class="fas fa-cart-plus"></i> Aggiungi al carrello
-                                        </a>
+                                       <form method="POST" action="add_to_cart.php" style="display: inline;">
+                                            <input type="hidden" name="listing_id" value="<?php echo $listing['listing_id']; ?>">
+                                            <button type="submit" class="btn-add-cart">
+                                                <i class="fas fa-cart-plus"></i> Aggiungi al carrello
+                                            </button>
+                                        </form>
                                     <?php endif; ?>
                                 </td>
                             </tr>

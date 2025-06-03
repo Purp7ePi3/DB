@@ -20,7 +20,7 @@ if (!isset($_SESSION['user_id'])) {
         'message' => 'Devi effettuare il login per aggiungere prodotti al carrello',
         'redirect' => 'login.php'
     ]);
-    header("Location: $base_url/public/index.php");  
+    exit;
 }
 
 // Check if POST data exists
@@ -74,47 +74,72 @@ try {
         exit;
     }
     
-    // Initialize cart if not exists
-    if (!isset($_SESSION['cart'])) {
-        $_SESSION['cart'] = [];
+    // Get or create user's cart
+    $sql_get_cart = "SELECT id FROM carts WHERE user_id = ?";
+    $stmt = $conn->prepare($sql_get_cart);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $cart_result = $stmt->get_result();
+    
+    if ($cart_result->num_rows === 0) {
+        // Create a new cart for the user
+        $sql_create_cart = "INSERT INTO carts (user_id, created_at, updated_at) VALUES (?, NOW(), NOW())";
+        $stmt = $conn->prepare($sql_create_cart);
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $cart_id = $conn->insert_id;
+    } else {
+        $cart = $cart_result->fetch_assoc();
+        $cart_id = $cart['id'];
     }
     
     // Check if the item is already in cart
-    $item_exists = false;
-    foreach ($_SESSION['cart'] as &$item) {
-        if ($item['listing_id'] == $listing_id) {
-            // Check if adding would exceed available quantity
-            if ($item['quantity'] + $quantity > $listing['quantity']) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Hai raggiunto la quantità massima disponibile per questo prodotto'
-                ]);
-                exit;
-            }
-            
-            // Increment quantity if already in cart
-            $item['quantity'] += $quantity;
-            $item_exists = true;
-            break;
+    $sql_check_item = "SELECT id, quantity FROM cart_items WHERE cart_id = ? AND listing_id = ?";
+    $stmt = $conn->prepare($sql_check_item);
+    $stmt->bind_param("ii", $cart_id, $listing_id);
+    $stmt->execute();
+    $item_result = $stmt->get_result();
+    
+    if ($item_result->num_rows > 0) {
+        // Item exists, update quantity
+        $item = $item_result->fetch_assoc();
+        $new_quantity = $item['quantity'] + $quantity;
+        
+        // Check if adding would exceed available quantity
+        if ($new_quantity > $listing['quantity']) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Hai raggiunto la quantità massima disponibile per questo prodotto'
+            ]);
+            exit;
         }
+        
+        $sql_update = "UPDATE cart_items SET quantity = ?, updated_at = NOW() WHERE id = ?";
+        $stmt = $conn->prepare($sql_update);
+        $stmt->bind_param("ii", $new_quantity, $item['id']);
+        $stmt->execute();
+    } else {
+        // Add new item to cart
+        $sql_insert = "INSERT INTO cart_items (cart_id, listing_id, quantity, created_at, updated_at) 
+                       VALUES (?, ?, ?, NOW(), NOW())";
+        $stmt = $conn->prepare($sql_insert);
+        $stmt->bind_param("iii", $cart_id, $listing_id, $quantity);
+        $stmt->execute();
     }
     
-    // Add new item to cart if not exists
-    if (!$item_exists) {
-        $_SESSION['cart'][] = [
-            'listing_id' => $listing_id,
-            'name' => $listing['name_en'],
-            'price' => $listing['price'],
-            'quantity' => $quantity,
-            'max_quantity' => $listing['quantity']
-        ];
-    }
+    // Update cart timestamp
+    $sql_update_cart = "UPDATE carts SET updated_at = NOW() WHERE id = ?";
+    $stmt = $conn->prepare($sql_update_cart);
+    $stmt->bind_param("i", $cart_id);
+    $stmt->execute();
     
     // Calculate total items in cart
-    $cart_count = 0;
-    foreach ($_SESSION['cart'] as $item) {
-        $cart_count += $item['quantity'];
-    }
+    $sql_count = "SELECT SUM(quantity) as total_items FROM cart_items WHERE cart_id = ?";
+    $stmt = $conn->prepare($sql_count);
+    $stmt->bind_param("i", $cart_id);
+    $stmt->execute();
+    $count_result = $stmt->get_result();
+    $cart_count = $count_result->fetch_assoc()['total_items'] ?? 0;
     
     // Return success response
     echo json_encode([
