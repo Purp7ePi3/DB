@@ -85,36 +85,68 @@ if ($is_logged_in) {
 // Handle adding card to wishlist
 $wishlist_message = '';
 if ($is_logged_in && isset($_POST['add_to_wishlist'])) {
+   
     // First check if user already has a wishlist
     $sql_get_wishlist = "SELECT id FROM wishlists WHERE user_id = ?";
     $stmt = $conn->prepare($sql_get_wishlist);
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $wishlist_result = $stmt->get_result();
-    
+        
     if ($wishlist_result->num_rows === 0) {
-        // Create a new wishlist for the user - QUERY CORRETTA senza created_at
+        // Create a new wishlist for the user
         $sql_create_wishlist = "INSERT INTO wishlists (user_id, name) VALUES (?, 'My Wishlist')";
         $stmt = $conn->prepare($sql_create_wishlist);
         $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $wishlist_id = $conn->insert_id;
+        
+        if ($stmt->execute()) {
+            $wishlist_id = $conn->insert_id;
+        } else {
+            echo "Error creating wishlist: " . $conn->error . "<br>";
+        }
     } else {
         $wishlist_id = $wishlist_result->fetch_assoc()['id'];
     }
     
-    // Add card to wishlist if not already there
-  if (!$in_wishlist) {
+    // Check if card already exists in wishlist
+    $sql_check_existing = "SELECT id FROM wishlist_items WHERE wishlist_id = ? AND single_card_id = ?";
+    $stmt = $conn->prepare($sql_check_existing);
+    $stmt->bind_param("ii", $wishlist_id, $card_id);
+    $stmt->execute();
+    $existing_result = $stmt->get_result();
+        
+    if ($existing_result->num_rows > 0) {
+        $wishlist_message = "La carta è già nella tua wishlist.";
+    } else {
+        // Add card to wishlist
         $sql_add_to_wishlist = "INSERT INTO wishlist_items (wishlist_id, single_card_id) VALUES (?, ?)";
         $stmt = $conn->prepare($sql_add_to_wishlist);
         $stmt->bind_param("ii", $wishlist_id, $card_id);
         
         if ($stmt->execute()) {
+            $new_item_id = $conn->insert_id;
             $wishlist_message = "La carta è stata aggiunta alla tua wishlist.";
             $in_wishlist = true;
         } else {
             $wishlist_message = "Errore durante l'aggiunta alla wishlist: " . $conn->error;
+            echo "ERROR: " . $conn->error . "<br>";
         }
+    }
+}
+
+// Handle removing card from wishlist
+if ($is_logged_in && isset($_POST['remove_from_wishlist'])) {
+    $sql_remove = "DELETE wi FROM wishlist_items wi
+              JOIN wishlists w ON wi.wishlist_id = w.id
+              WHERE w.user_id = ? AND wi.single_card_id = ?";
+    $stmt = $conn->prepare($sql_remove);
+    $stmt->bind_param("ii", $user_id, $card_id);
+    
+    if ($stmt->execute()) {
+        $wishlist_message = "La carta è stata rimossa dalla tua wishlist.";
+        $in_wishlist = false;
+    } else {
+        $wishlist_message = "Errore durante la rimozione dalla wishlist.";
     }
 }
 
@@ -219,21 +251,36 @@ include __DIR__ . '/partials/header.php';
                 <div class="no-image">Immagine non disponibile</div>
             <?php endif; ?>
             
-            <?php if ($is_logged_in): ?>
-                <div class="card-actions">
-                    <form method="POST" action="">
-                        <?php if ($in_wishlist): ?>
-                            <button type="submit" name="remove_from_wishlist" class="btn-wishlist active">
-                                <i class="fas fa-heart"></i> Rimuovi dalla wishlist
-                            </button>
-                        <?php else: ?>
-                            <button type="submit" name="add_to_wishlist" class="btn-wishlist">
-                                <i class="far fa-heart"></i> Aggiungi alla wishlist
-                            </button>
-                        <?php endif; ?>
-                    </form>
-                </div>
+<?php if ($is_logged_in): ?>
+    <div class="card-actions">
+        <!-- Form semplificato per debug -->
+        <form method="POST" action="<?php echo $_SERVER['PHP_SELF'] . '?id=' . $card_id; ?>">
+            <!-- <p style="color: white;">DEBUG FORM - User ID: < ?php echo $user_id; ?> - Card ID: < ?php echo $card_id; ?></p> -->
+            <?php if ($in_wishlist): ?>
+                <input type="submit" name="remove_from_wishlist" value="RIMUOVI DA WISHLIST" style="padding: 10px; font-size: 16px;">
+            <?php else: ?>
+                <input type="submit" name="add_to_wishlist" value="AGGIUNGI A WISHLIST" style="padding: 10px; font-size: 16px;">
             <?php endif; ?>
+        </form>
+        
+        <!-- Form originale nascosto per confronto -->
+        <div style="display: none;">
+            <form method="POST" action="">
+                <?php if ($in_wishlist): ?>
+                    <button type="submit" name="remove_from_wishlist" class="btn-wishlist active">
+                        <i class="fas fa-heart"></i> Rimuovi dalla wishlist
+                    </button>
+                <?php else: ?>
+                    <button type="submit" name="add_to_wishlist" class="btn-wishlist">
+                        <i class="far fa-heart"></i> Aggiungi alla wishlist
+                    </button>
+                <?php endif; ?>
+            </form>
+        </div>
+    </div>
+<?php else: ?>
+    <p>NON LOGGATO - <a href="/DataBase/auth/login.php">Fai login</a></p>
+<?php endif; ?>
         </div>
         
         <div class="card-info">
