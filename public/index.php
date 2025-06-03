@@ -74,7 +74,7 @@ include 'partials/header.php';
             while($card = $result_latest->fetch_assoc()) {
                 ?>
                 <div class="card-item">
-                <a href="cards.php?blueprint_id=<?php echo $card["blueprint_id"]; ?>">
+                <a href="cards.php?id=<?php echo $card["blueprint_id"]; ?>">
                     <div class="card-image">
                             <?php if ($card["image_url"]): ?>
                                 <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
