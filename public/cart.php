@@ -14,13 +14,24 @@ require_once '../config/config.php';
 if (!isset($_SESSION['user_id'])) {
     // Store current URL to redirect back after login
     $_SESSION['redirect_url'] = 'cart.php';
-    header("Location: $base_url/public/index.php");
+    header("Location: $base_url/auth/login.php");
     exit;
 }
 
 $user_id = $_SESSION['user_id'];
 $success_message = '';
 $error_message = '';
+
+// Handle session messages
+if (isset($_SESSION['success_message'])) {
+    $success_message = $_SESSION['success_message'];
+    unset($_SESSION['success_message']);
+}
+
+if (isset($_SESSION['error_message'])) {
+    $error_message = $_SESSION['error_message'];
+    unset($_SESSION['error_message']);
+}
 
 // Handle quantity updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_cart'])) {
@@ -56,9 +67,9 @@ if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
     }
 }
 
-// Get cart items
+// Get cart items - QUERY CORRETTA con single_card_id
 $sql = "SELECT ci.id as cart_item_id, ci.quantity, l.id as listing_id, l.price, l.quantity as available_quantity,
-        sc.name_en, sc.image_url, e.name as expansion_name, g.display_name as game_name,
+        l.single_card_id, sc.name_en, sc.image_url, e.name as expansion_name, g.display_name as game_name,
         cc.condition_name, u.username as seller_name, COALESCE(up.rating, 0) as seller_rating
         FROM cart_items ci
         JOIN carts c ON ci.cart_id = c.id
@@ -81,7 +92,7 @@ $result = $stmt->get_result();
 $total = 0;
 $items_count = 0;
 $unavailable_items = [];
-$cart_items = []; // Initialize here, outside the if statement
+$cart_items = [];
 
 if ($result->num_rows > 0) {
     while ($item = $result->fetch_assoc()) {
@@ -92,9 +103,9 @@ if ($result->num_rows > 0) {
             
             // Update cart quantity in database
             $sql_update = "UPDATE cart_items SET quantity = ? WHERE id = ?";
-            $stmt = $conn->prepare($sql_update);
-            $stmt->bind_param("ii", $item['available_quantity'], $item['cart_item_id']);
-            $stmt->execute();
+            $stmt_update = $conn->prepare($sql_update);
+            $stmt_update->bind_param("ii", $item['available_quantity'], $item['cart_item_id']);
+            $stmt_update->execute();
         }
         
         // Add to cart items array
@@ -141,7 +152,8 @@ include_once $root_path . $base_url . '/public/partials/header.php';
                     <?php foreach ($cart_items as $item): ?>
                         <div class="cart-item">
                             <div class="item-image">
-                                <a href="cards.php?id=<?php echo $item['listing_id']; ?>">
+                                <!-- LINK CORRETTO con single_card_id -->
+                                <a href="cards.php?id=<?php echo $item['single_card_id']; ?>">
                                     <?php if ($item['image_url']): ?>
                                         <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name_en']); ?>">
                                     <?php else: ?>
@@ -151,7 +163,8 @@ include_once $root_path . $base_url . '/public/partials/header.php';
                             </div>
                             
                             <div class="item-details">
-                                <h3><a href="cards.php?id=<?php echo $item['listing_id']; ?>"><?php echo htmlspecialchars($item['name_en']); ?></a></h3>
+                                <!-- LINK CORRETTO con single_card_id -->
+                                <h3><a href="cards.php?id=<?php echo $item['single_card_id']; ?>"><?php echo htmlspecialchars($item['name_en']); ?></a></h3>
                                 <p class="item-meta">
                                     <?php echo htmlspecialchars($item['expansion_name']); ?> (<?php echo htmlspecialchars($item['game_name']); ?>)<br>
                                     Condizione: <?php echo htmlspecialchars($item['condition_name']); ?><br>
