@@ -330,43 +330,13 @@ echo "<!-- DEBUG: Listing ID = " . $listing['listing_id'] . " -->";
 ?>
 <?php else: ?>
     <!-- Form per aggiungere al carrello -->
-    <form method="POST" action="<?php echo $base_url; ?>/public/add_to_cart.php" style="display: inline;">
+    <form method="POST" action="<?php echo $base_url; ?>add_to_cart.php" style="display: inline;">
         <input type="hidden" name="listing_id" value="<?php echo htmlspecialchars($listing['listing_id']); ?>">
         <button type="submit" class="btn-add-cart" onclick="console.log('Form submitted with listing_id:', <?php echo $listing['listing_id']; ?>);">
             <i class="fas fa-cart-plus"></i> Aggiungi al carrello
         </button>
     </form>
 <?php endif; ?>
-
-<?php
-// ALTERNATIVE: Se il form sopra non funziona, prova questo con AJAX:
-?>
-
-<!-- METODO ALTERNATIVO CON AJAX -->
-<script>
-function addToCart(listingId) {
-    console.log('Adding to cart, listing ID:', listingId);
-    
-    // Crea un form nascosto e invialo
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '<?php echo $base_url; ?>/public/add_to_cart.php';
-    
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'listing_id';
-    input.value = listingId;
-    
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-}
-</script>
-
-<!-- E poi usa questo bottone invece del form: -->
-<button type="button" class="btn-add-cart" onclick="addToCart(<?php echo $listing['listing_id']; ?>)">
-    <i class="fas fa-cart-plus"></i> Aggiungi al carrello
-</button>
                                 </td>
                             </tr>
                             <?php if (!empty($listing['description'])): ?>
