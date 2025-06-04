@@ -133,12 +133,6 @@ include __DIR__ . '/partials/header.php';
                 <input type="text" id="country" name="country" value="<?php echo htmlspecialchars($user['country'] ?? ''); ?>" class="form-control">
             </div>
             
-            <div class="form-group">
-                <label for="bio">Bio:</label>
-                <textarea id="bio" name="bio" rows="5" class="form-control"><?php echo htmlspecialchars($user['bio'] ?? ''); ?></textarea>
-                <small class="form-text text-muted">Racconta qualcosa su di te e sui tuoi interessi collezionistici.</small>
-            </div>
-            
             <div class="form-actions">
                 <a href="profile.php" class="btn btn-secondary">Annulla</a>
                 <button type="submit" class="btn btn-primary">Salva Modifiche</button>
