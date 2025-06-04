@@ -45,17 +45,19 @@ include __DIR__ . '/partials/header.php';
             do {
                 ?>
                 <div class="card-item">
-                    <div class="card-image">
-                        <?php if ($card["image_url"]): ?>
-                            <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
-                        <?php else: ?>
-                            <div class="no-image">Immagine non disponibile</div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-info">
-                        <h3><?php echo htmlspecialchars($card["name_en"]); ?></h3>
-                        <p class="card-expansion"><?php echo htmlspecialchars($card["expansion_name"]); ?> (#<?php echo htmlspecialchars($card["collector_number"]); ?>)</p>
-                    </div>
+                    <a href="cards.php?id=<?php echo $card["collector_number"]; ?>">
+                        <div class="card-image">
+                            <?php if ($card["image_url"]): ?>
+                                <img src="https://www.cardtrader.com/<?php echo htmlspecialchars($card["image_url"]); ?>" alt="<?php echo htmlspecialchars($card["name_en"]); ?>">
+                            <?php else: ?>
+                                <div class="no-image">Immagine non disponibile</div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="card-info">
+                            <h3><?php echo htmlspecialchars($card["name_en"]); ?></h3>
+                            <p class="card-expansion"><?php echo htmlspecialchars($card["expansion_name"]); ?> (#<?php echo htmlspecialchars($card["collector_number"]); ?>)</p>
+                        </div>
+                    </a>
                 </div>
                 <?php
             } while ($card = $result_latest->fetch_assoc());
