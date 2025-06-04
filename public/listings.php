@@ -8,13 +8,20 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once '../config/config.php';
 $base_url = "/DataBase";
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: auth/login.php");
-    exit;
+// Se c'è seller_id nella query string, mostra i suoi annunci (pubblici)
+if (isset($_GET['seller_id']) && is_numeric($_GET['seller_id'])) {
+    $user_id = (int)$_GET['seller_id'];
+    $is_public = true;
+} else {
+    // Check if user is logged in
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: auth/login.php");
+        exit;
+    }
+    $user_id = $_SESSION['user_id'];
+    $is_public = false;
 }
 
-$user_id = $_SESSION['user_id'];
 $tab = $_GET['tab'] ?? 'active'; // Default to active listings tab
 if (!in_array($tab, ['active', 'sold', 'inactive'])) {
     $tab = 'active';
@@ -35,6 +42,7 @@ if ($tab === 'active') {
 }
 
 $listings_sql = "SELECT l.id, l.price, l.quantity, l.description, l.created_at, l.is_active,
+                sc.blueprint_id,
                 sc.name_en, sc.image_url, sc.collector_number,
                 e.name as expansion_name, e.code as expansion_code,
                 g.display_name as game_name,
@@ -97,83 +105,101 @@ include __DIR__ . '/partials/header.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Listings</title>
     <?php 
-        $page = basename($_SERVER['PHP_SELF']); // Ottiene il nome del file corrente
-        // Carica il CSS per listings solo se siamo nella pagina di listings
+        $page = basename($_SERVER['PHP_SELF']);
         if ($page == 'listings.php'): ?>
             <link rel="stylesheet" href="<?= $base_url ?>/public/assets/css/listing.css">
         <?php endif; ?>
     </head>
 <body>
     <div class="container">
-        <h1>My Listings</h1>
+        <h1>
+            <?php if ($is_public): ?>
+                <?php
+                    $stmt = $conn->prepare("SELECT username FROM accounts WHERE id = ?");
+                    $stmt->bind_param("i", $user_id);
+                    $stmt->execute();
+                    $username = $stmt->get_result()->fetch_assoc()['username'] ?? '';
+                    $stmt->close();
+                    echo "Annunci di " . htmlspecialchars($username);
+                ?>
+            <?php else: ?>
+                I miei annunci
+            <?php endif; ?>
+        </h1>
         
         <!-- Tabs Navigation -->
         <div class="tabs">
-            <a href="?tab=active" class="tab <?php echo ($tab === 'active') ? 'active' : ''; ?>">
+            <a href="?<?php echo $is_public ? "seller_id=$user_id&" : ""; ?>tab=active" class="tab <?php echo ($tab === 'active') ? 'active' : ''; ?>">
                 Active (<?php echo $active_count; ?>)
             </a>
-            <a href="?tab=sold" class="tab <?php echo ($tab === 'sold') ? 'active' : ''; ?>">
+            <a href="?<?php echo $is_public ? "seller_id=$user_id&" : ""; ?>tab=sold" class="tab <?php echo ($tab === 'sold') ? 'active' : ''; ?>">
                 Sold (<?php echo $sold_count; ?>)
             </a>
+            <?php if (!$is_public): ?>
             <a href="?tab=inactive" class="tab <?php echo ($tab === 'inactive') ? 'active' : ''; ?>">
                 Inactive (<?php echo $inactive_count; ?>)
             </a>
+            <?php endif; ?>
         </div>
         
         <!-- Listings Grid -->
         <div class="listings-grid">
             <?php if ($listings_result->num_rows > 0): ?>
                 <?php while ($listing = $listings_result->fetch_assoc()): ?>
-                    <div class="listing-card">
-                        <div class="card-image">
-                            <?php if (!empty($listing['image_url'])): ?>
-                                <img src="https://www.cardtrader.com<?php echo htmlspecialchars($listing['image_url']); ?>" alt="<?php echo htmlspecialchars($listing['name_en'] ?? 'Card'); ?>">
-                            <?php else: ?>
-                                <div class="no-image">No image</div>
+                    <div class="listing-card-wrapper">
+                        <div class="listing-card">
+                            <a href="cards.php?id=<?php echo $listing['blueprint_id']; ?>" class="listing-card-link" style="text-decoration:none;color:inherit;">
+                                <div class="card-image">
+                                    <?php if (!empty($listing['image_url'])): ?>
+                                        <img src="https://www.cardtrader.com<?php echo htmlspecialchars($listing['image_url']); ?>" alt="<?php echo htmlspecialchars($listing['name_en'] ?? 'Card'); ?>">
+                                    <?php else: ?>
+                                        <div class="no-image">No image</div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-info">
+                                    <h3>
+                                        <?php
+                                            if (!empty($listing['name_en'])) {
+                                                echo htmlspecialchars($listing['name_en']);
+                                            } else {
+                                                echo 'Card #' . htmlspecialchars($listing['single_card_id']);
+                                            }
+                                        ?>
+                                    </h3>
+                                    <p class="expansion"><?php echo htmlspecialchars($listing['expansion_name'] ?? ''); ?> (<?php echo htmlspecialchars($listing['expansion_code'] ?? ''); ?>)</p>
+                                    <p class="game"><?php echo htmlspecialchars($listing['game_name'] ?? ''); ?></p>
+                                    <p class="details">
+                                        <?php echo htmlspecialchars($listing['condition_name']); ?> | 
+                                        <?php echo htmlspecialchars($listing['rarity_name']); ?> | 
+                                        #<?php echo htmlspecialchars($listing['collector_number']); ?>
+                                    </p>
+                                    <p class="price">€<?php echo number_format($listing['price'], 2, ',', '.'); ?></p>
+                                    <p class="quantity">
+                                        <?php if ($tab === 'active'): ?>
+                                            Disponibili: <?php echo htmlspecialchars($listing['quantity']); ?>
+                                        <?php elseif ($tab === 'sold'): ?>
+                                            Vendute: <?php echo htmlspecialchars($listing['sold_count']); ?>
+                                        <?php endif; ?>
+                                    </p>
+                                </div>
+                            </a>
+                            <?php if (!$is_public): ?>
+                                <div class="actions">
+                                    <?php if ($tab === 'active'): ?>
+                                        <a href="edit_listing.php?id=<?php echo $listing['id']; ?>" class="btn btn-edit">Modifica</a>
+                                        <form method="post" action="deactivate_listing.php" style="display:inline;">
+                                            <input type="hidden" name="listing_id" value="<?php echo $listing['id']; ?>">
+                                            <button type="submit" class="btn btn-deactivate">Disattiva</button>
+                                        </form>
+                                    <?php elseif ($tab === 'inactive'): ?>
+                                        <a href="edit_listing.php?id=<?php echo $listing['id']; ?>" class="btn btn-edit">Modifica</a>
+                                        <form method="post" action="activate_listing.php" style="display:inline;">
+                                            <input type="hidden" name="listing_id" value="<?php echo $listing['id']; ?>">
+                                            <button type="submit" class="btn btn-activate">Attiva</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
                             <?php endif; ?>
-                        </div>
-                        <div class="card-info">
-                            <h3>
-                                <?php
-                                    if (!empty($listing['name_en'])) {
-                                        echo htmlspecialchars($listing['name_en']);
-                                    } else {
-                                        echo 'Card #' . htmlspecialchars($listing['single_card_id']);
-                                    }
-                                ?>
-                            </h3>
-                            <p class="expansion"><?php echo htmlspecialchars($listing['expansion_name'] ?? ''); ?> (<?php echo htmlspecialchars($listing['expansion_code'] ?? ''); ?>)</p>
-                            <p class="game"><?php echo htmlspecialchars($listing['game_name'] ?? ''); ?></p>
-                            <p class="details">
-                                <?php echo htmlspecialchars($listing['condition_name']); ?> | 
-                                <?php echo htmlspecialchars($listing['rarity_name']); ?> | 
-                                #<?php echo htmlspecialchars($listing['collector_number']); ?>
-                            </p>
-                            <p class="price">$<?php echo number_format($listing['price'], 2); ?></p>
-                            <p class="quantity">
-                                <?php if ($tab === 'active'): ?>
-                                    Available: <?php echo htmlspecialchars($listing['quantity']); ?>
-                                <?php elseif ($tab === 'sold'): ?>
-                                    Sold: <?php echo htmlspecialchars($listing['sold_count']); ?>
-                                <?php endif; ?>
-                            </p>
-                            
-                            <!-- Actions based on tab -->
-                            <div class="actions">
-                                <?php if ($tab === 'active'): ?>
-                                    <a href="edit_listing.php?id=<?php echo $listing['id']; ?>" class="btn btn-edit">Edit</a>
-                                    <form method="post" action="deactivate_listing.php">
-                                        <input type="hidden" name="listing_id" value="<?php echo $listing['id']; ?>">
-                                        <button type="submit" class="btn btn-deactivate">Deactivate</button>
-                                    </form>
-                                <?php elseif ($tab === 'inactive'): ?>
-                                    <a href="edit_listing.php?id=<?php echo $listing['id']; ?>" class="btn btn-edit">Edit</a>
-                                    <form method="post" action="activate_listing.php">
-                                        <input type="hidden" name="listing_id" value="<?php echo $listing['id']; ?>">
-                                        <button type="submit" class="btn btn-activate">Activate</button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
                         </div>
                     </div>
                 <?php endwhile; ?>
@@ -331,9 +357,49 @@ include __DIR__ . '/partials/header.php';
     
     .actions {
     display: flex;
-    justify-content: space-between;
+    gap: 0.5rem;
     margin-top: auto;
-    }
+    padding: 0.75rem 1rem 0.5rem 1rem; /* padding sopra e ai lati */
+    border-top: 1px solid var(--medium-gray); /* linea separatrice */
+    background: transparent;
+}
+
+.btn-edit,
+.btn-deactivate,
+.btn-activate {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0 !important;
+    text-align: center;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+form {
+    flex: 1 1 0;
+    margin: 0;
+}
+
+.actions form {
+    width: 100%;
+}
+
+.actions button {
+    width: 100%;
+    height: 40px;
+    border-radius: 4px;
+    font-size: 1rem;
+    padding: 0;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
     
     .btn {
     padding: 0.5rem 1rem;
@@ -358,11 +424,6 @@ include __DIR__ . '/partials/header.php';
     background-color: #3a5a8d;
     }
     
-    .btn-deactivate, .btn-activate {
-    flex: 1;
-    display: inline-block;
-    }
-    
     .btn-deactivate {
     background-color: var(--warning-color);
     color: #212529;
@@ -379,10 +440,6 @@ include __DIR__ . '/partials/header.php';
     
     .btn-activate:hover {
     background-color: #218838;
-    }
-    
-    form {
-    flex: 1;
     }
     
     /* No listings message */
@@ -435,39 +492,39 @@ include __DIR__ . '/partials/header.php';
     }
     
     .tabs {
-    flex-wrap: wrap;
-    }
-    
-    .tab {
+    .tab {rap: wrap;
     margin-bottom: 0.5rem;
     }
-    
-    .actions {
+    .tab {
+    .actions {tom: 0.5rem;
     flex-direction: column;
     }
-    
-    .btn-edit, form {
+    .actions {
+    .btn-edit, form {olumn;
     flex: none;
     width: 100%;
-    margin-right: 0;
+    margin-right: 0;{
     margin-bottom: 0.5rem;
-    }
-    }
-    
+    }idth: 100%;
+    }argin-right: 0;
+    margin-bottom: 0.5rem;
     @media (max-width: 480px) {
     .listings-grid {
     grid-template-columns: 1fr;
-    }
-    
-    .container {
+    }media (max-width: 480px) {
+    .listings-grid {
+    .container {e-columns: 1fr;
     width: 100%;
     padding: 0.5rem;
-    }
-    
-    h1 {
+    }container {
+    width: 100%;
+    h1 {ing: 0.5rem;
     font-size: 1.5rem;
     }
-    }
+    }1 {
+    font-size: 1.5rem;
+</style>
+</html>
     
 </style>
 </html>

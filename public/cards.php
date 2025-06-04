@@ -350,7 +350,7 @@ include __DIR__ . '/partials/header.php';
                         <?php while ($listing = $result_listings->fetch_assoc()): ?>
                             <tr>
                                 <td class="seller-info">
-                                    <a href="seller.php?id=<?php echo $listing['seller_id']; ?>">
+                                    <a href="user.php?id=<?php echo $listing['seller_id']; ?>">
                                         <?php echo htmlspecialchars($listing['seller_name']); ?>
                                     </a>
                                     <div class="seller-rating">
