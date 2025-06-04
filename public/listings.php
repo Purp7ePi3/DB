@@ -16,6 +16,9 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 $tab = $_GET['tab'] ?? 'active'; // Default to active listings tab
+if (!in_array($tab, ['active', 'sold', 'inactive'])) {
+    $tab = 'active';
+}
 
 // Pagination settings
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -24,11 +27,11 @@ $offset = ($page - 1) * $per_page;
 
 // Get listings based on tab
 if ($tab === 'active') {
-    $status_condition = "is_active = TRUE";
+    $status_condition = "l.is_active = TRUE";
 } elseif ($tab === 'sold') {
-    $status_condition = "is_active = FALSE AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.listing_id = l.id)";
+    $status_condition = "l.is_active = FALSE AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.listing_id = l.id)";
 } else { // inactive
-    $status_condition = "is_active = FALSE AND NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.listing_id = l.id)";
+    $status_condition = "l.is_active = FALSE AND NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.listing_id = l.id)";
 }
 
 $listings_sql = "SELECT l.id, l.price, l.quantity, l.description, l.created_at, l.is_active,
@@ -38,11 +41,11 @@ $listings_sql = "SELECT l.id, l.price, l.quantity, l.description, l.created_at, 
                 cc.condition_name, cr.rarity_name,
                 (SELECT COUNT(*) FROM order_items oi WHERE oi.listing_id = l.id) as sold_count
                 FROM listings l
-                JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
-                JOIN expansions e ON sc.expansion_id = e.id
-                JOIN games g ON e.game_id = g.id
-                JOIN card_conditions cc ON l.condition_id = cc.id
-                JOIN card_rarities cr ON sc.rarity_id = cr.id
+                LEFT JOIN single_cards sc ON l.single_card_id = sc.blueprint_id
+                LEFT JOIN expansions e ON sc.expansion_id = e.id
+                LEFT JOIN games g ON e.game_id = g.id
+                LEFT JOIN card_conditions cc ON l.condition_id = cc.id
+                LEFT JOIN card_rarities cr ON sc.rarity_id = cr.id
                 WHERE l.seller_id = ? AND $status_condition
                 ORDER BY l.created_at DESC
                 LIMIT ?, ?";
@@ -123,12 +126,24 @@ include __DIR__ . '/partials/header.php';
                 <?php while ($listing = $listings_result->fetch_assoc()): ?>
                     <div class="listing-card">
                         <div class="card-image">
-                            <img src="https://www.cardtrader.com<?php echo htmlspecialchars($listing['image_url']); ?>" alt="<?php echo htmlspecialchars($listing['name_en']); ?>">
+                            <?php if (!empty($listing['image_url'])): ?>
+                                <img src="https://www.cardtrader.com<?php echo htmlspecialchars($listing['image_url']); ?>" alt="<?php echo htmlspecialchars($listing['name_en'] ?? 'Card'); ?>">
+                            <?php else: ?>
+                                <div class="no-image">No image</div>
+                            <?php endif; ?>
                         </div>
                         <div class="card-info">
-                            <h3><?php echo htmlspecialchars($listing['name_en']); ?></h3>
-                            <p class="expansion"><?php echo htmlspecialchars($listing['expansion_name']); ?> (<?php echo htmlspecialchars($listing['expansion_code']); ?>)</p>
-                            <p class="game"><?php echo htmlspecialchars($listing['game_name']); ?></p>
+                            <h3>
+                                <?php
+                                    if (!empty($listing['name_en'])) {
+                                        echo htmlspecialchars($listing['name_en']);
+                                    } else {
+                                        echo 'Card #' . htmlspecialchars($listing['single_card_id']);
+                                    }
+                                ?>
+                            </h3>
+                            <p class="expansion"><?php echo htmlspecialchars($listing['expansion_name'] ?? ''); ?> (<?php echo htmlspecialchars($listing['expansion_code'] ?? ''); ?>)</p>
+                            <p class="game"><?php echo htmlspecialchars($listing['game_name'] ?? ''); ?></p>
                             <p class="details">
                                 <?php echo htmlspecialchars($listing['condition_name']); ?> | 
                                 <?php echo htmlspecialchars($listing['rarity_name']); ?> | 

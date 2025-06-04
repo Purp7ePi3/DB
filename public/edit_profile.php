@@ -21,12 +21,15 @@ $error_message = '';
 // Fetch user profile data
 $sql_user = "SELECT 
     a.id, a.username, a.email,
-    up.first_name, up.last_name, up.bio, up.country
+    up.first_name, up.last_name, up.country
     FROM accounts a
     LEFT JOIN user_profiles up ON a.id = up.user_id
     WHERE a.id = ?";
 
 $stmt = $conn->prepare($sql_user);
+if (!$stmt) {
+    die("Errore nella preparazione della query utente: " . $conn->error . "<br>SQL: " . $sql_user);
+}
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result_user = $stmt->get_result();
@@ -41,7 +44,6 @@ $user = $result_user->fetch_assoc();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $first_name = trim($_POST['first_name']);
     $last_name = trim($_POST['last_name']);
-    $bio = trim($_POST['bio']);
     $country = trim($_POST['country']);
     
     // Check if user_profile exists
@@ -54,27 +56,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($profile_exists) {
         // Update existing profile
         $sql = "UPDATE user_profiles SET 
-                first_name = ?, last_name = ?, bio = ?, country = ? 
+                first_name = ?, last_name = ?, country = ? 
                 WHERE user_id = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssi", $first_name, $last_name, $bio, $country, $user_id);
+        if (!$stmt) {
+            die("Errore nella preparazione della query update: " . $conn->error . "<br>SQL: " . $sql);
+        }
+        $stmt->bind_param("sssi", $first_name, $last_name, $country, $user_id);
     } else {
         // Create new profile
-        $sql = "INSERT INTO user_profiles (user_id, first_name, last_name, bio, country, rating) 
-                VALUES (?, ?, ?, ?, ?, 0)";
+        $sql = "INSERT INTO user_profiles (user_id, first_name, last_name, country, rating) 
+                VALUES (?, ?, ?, ?, 0)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("issss", $user_id, $first_name, $last_name, $bio, $country);
+        if (!$stmt) {
+            die("Errore nella preparazione della query insert: " . $conn->error . "<br>SQL: " . $sql);
+        }
+        $stmt->bind_param("isss", $user_id, $first_name, $last_name, $country);
     }
     
     if ($stmt->execute()) {
-        $success_message = "Profilo aggiornato con successo!";
-        
-        // Refresh user data
-        $stmt = $conn->prepare($sql_user);
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result_user = $stmt->get_result();
-        $user = $result_user->fetch_assoc();
+        $_SESSION['profile_success'] = "Profilo aggiornato con successo!";
+        header("Location: profile.php");
+        exit;
     } else {
         $error_message = "Errore durante l'aggiornamento del profilo: " . $conn->error;
     }

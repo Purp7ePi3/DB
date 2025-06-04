@@ -154,6 +154,15 @@ include __DIR__ . '/partials/header.php';
             <a href="orders.php" class="btn"><i class="fas fa-shopping-bag"></i> I miei ordini</a>
             <a href="wishlist.php" class="btn"><i class="fas fa-heart"></i> La mia wishlist</a>
         </div>
+
+        <?php if (!empty($_SESSION['profile_success'])): ?>
+            <div class="alert alert-success" style="margin: 20px auto; max-width: 800px;">
+                <?php echo htmlspecialchars($_SESSION['profile_success']); ?>
+            </div>
+        <?php
+            unset($_SESSION['profile_success']);
+        endif;
+        ?>
     </div>
 </div>
 
