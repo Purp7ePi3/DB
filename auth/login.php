@@ -19,6 +19,16 @@ require_once '../config/config.php';
 $error_message = '';
 $success_message = '';
 
+// Check for banned user message
+if (isset($_GET['is_active']) && $_GET['is_active'] == '0') {
+    $error_message = 'Il tuo account è stato sospeso. Contatta l\'amministratore per ulteriori informazioni.';
+}
+
+// Check for registration success message
+if (isset($_GET['registered']) && $_GET['registered'] == '1') {
+    $success_message = 'Registrazione completata con successo! Ora puoi effettuare il login.';
+}
+
 // Process login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
@@ -38,33 +48,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
             
-            // Verify password - in production, use password_verify() instead of direct comparison
-            if ($password == $user['password_hash']) {
-                // Password is correct, set session variables
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['email'] = $user['email'];
-                
-                // Set admin status based on account_type_id
-                $_SESSION['is_admin'] = ($user['account_type_id'] == 1);
-                
-                // Check if "remember me" is checked
-                if (isset($_POST['remember']) && $_POST['remember'] == 'on') {
-                    // Set cookie that expires in 30 days
-                    setcookie('remember_user', $user['id'], time() + (86400 * 30), "/");
-                }
-                
-                // Check if there's a redirect URL
-                if (isset($_SESSION['redirect_url'])) {
-                    $redirect = $_SESSION['redirect_url'];
-                    unset($_SESSION['redirect_url']);
-                    header("Location: $redirect");
-                } else {
-                    header("Location: $base_url/public/index.php");
-                }
-                exit;
+            // Check if user is banned BEFORE checking password
+            if ($user['is_active'] == 0) {
+                $error_message = "Il tuo account è stato sospeso. Contatta l'amministratore per ulteriori informazioni.";
             } else {
-                $error_message = "Password errata. Per favore riprova.";
+                // Verify password - in production, use password_verify() instead of direct comparison
+                if ($password == $user['password_hash']) {
+                    // Password is correct and user is active, set session variables
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['email'] = $user['email'];
+                    
+                    // Set admin status based on account_type_id
+                    $_SESSION['is_admin'] = ($user['account_type_id'] == 1);
+                    
+                    // Check if "remember me" is checked
+                    if (isset($_POST['remember']) && $_POST['remember'] == 'on') {
+                        // Set cookie that expires in 30 days
+                        setcookie('remember_user', $user['id'], time() + (86400 * 30), "/");
+                    }
+                    
+                    // Check if there's a redirect URL
+                    if (isset($_SESSION['redirect_url'])) {
+                        $redirect = $_SESSION['redirect_url'];
+                        unset($_SESSION['redirect_url']);
+                        header("Location: $redirect");
+                    } else {
+                        header("Location: $base_url/public/index.php");
+                    }
+                    exit;
+                } else {
+                    $error_message = "Password errata. Per favore riprova.";
+                }
             }
         } else {
             $error_message = "Nessun account trovato con questa email.";
@@ -95,7 +110,7 @@ include_once $root_path . $base_url . '/public/partials/header.php';
         <form action="login.php" method="POST" class="auth-form">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
+                <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required>
             </div>
             
             <div class="form-group">
